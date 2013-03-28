@@ -98,9 +98,8 @@ sub expandHome($) {
 
 sub printUsage() {
     print <<EOF
-Documentation: http://www.digitalmars.com/d/1.0/index.html
-               http://dgcc.sourceforge.net/
-               http://bitbucket.org/goshawk/gdc/wiki/Home
+Documentation: http://dlang.org/
+               http://www.gdcproject.org/
 Usage:
   gdmd files.d ... { -switch }
 
@@ -452,7 +451,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         # Pass -fxxx options
         push @out, $arg;
     } elsif ($arg eq '-man') {
-        browse("http://bitbucket.org/goshawk/gdc/wiki/UserDocumentation");
+        browse("http://www.gdcproject.org/wiki/UserDocumentation");
         exit 0;
     } elsif ( $arg =~ m/^-map$/ ) {
         $map = 1;
