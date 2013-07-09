@@ -22,9 +22,13 @@ class Config
     string scriptPath;  /// path to this script
     string dmdConfPath; /// path to dmd.conf
     string gdc;         /// path to GDC executable
+    string linker;      /// path to linker
 
     int gdcMajVer, gdcMinVer; /// GDC major/minor version
     string machine;           /// output of gdc -dumpmachine
+
+    string objExt;      /// extension of object files
+    string execExt;     /// extension of executables
 }
 
 
@@ -190,7 +194,7 @@ void readDmdConf(Config cfg) {
                 val = replace!((Captures!string m) => environment[m.hit.idup])
                               (val, regex(`%(\S+?)%`, "g"));
 
-                //debug writefln("[conf] %s='%s'", var, val);
+                debug writefln("[conf] %s='%s'", var, val);
                 environment[var] = val;
             }
         }
@@ -216,6 +220,9 @@ void getGdcSettings(Config cfg)
         auto m = match(rc.output, `^(\d+)\.(\d+)`);
         cfg.gdcMajVer = to!int(m.captures[1]);
         cfg.gdcMinVer = to!int(m.captures[2]);
+
+        debug writefln("[gdc] majver=%d minver=%d", cfg.gdcMajVer,
+                       cfg.gdcMinVer);
     }
 
     // Read target machine type
@@ -235,11 +242,63 @@ Config init(string[] args)
     auto cfg = new Config();
     cfg.scriptPath = findScriptPath(args[0]);
     cfg.gdc = findGDC(args[0]);
+    cfg.linker = cfg.gdc;
 
     readDmdConf(cfg);
     getGdcSettings(cfg);
 
+    version(Windows) {
+        cfg.objExt = ".obj";
+        cfg.execExt = ".exe";
+    }
+
+    version(Posix) {
+        cfg.objExt = ".o";
+        cfg.execExt = "";
+    }
+
     return cfg;
+}
+
+/**
+ * Compiles the given source file.
+ */
+void compile(Config cfg, string[] sources)
+{
+    foreach (srcfile; sources) {
+        // TBD: incorporate other necessary flags
+        auto cmd = [ cfg.gdc, "-c", srcfile ];
+        debug writeln("[exec] ", cmd.join(" "));
+        auto rc = execute(cmd);
+        if (rc.status != 0)
+            throw new Exception("Compile of %s failed: %s"
+                                .format(srcfile, rc.output));
+    }
+}
+
+void link(Config cfg, string[] sources)
+{
+    /*
+     * Construct link command
+     */
+    assert(sources.length >= 1);
+    auto outfile = baseName(sources[0], ".d") ~ cfg.execExt;
+    auto cmd = [ cfg.linker ];
+
+    foreach (srcfile; sources) {
+        auto objfile = baseName(srcfile, ".d") ~ cfg.objExt;
+        cmd ~= objfile;
+    }
+
+    cmd ~= [ "-o", outfile ];
+
+    /*
+     * Invoke linker
+     */
+    debug writeln("[exec] ", cmd.join(" "));
+    auto rc = execute(cmd);
+    if (rc.status != 0)
+        throw new Exception("Link failed: %s".format(rc.output));
 }
 
 /**
@@ -250,7 +309,17 @@ int main(string[] args)
     try {
         auto cfg = init(args);
 
-        //printUsage();
+        // TBD: parse command-line options
+        auto sources = args[1..$];
+
+        if (sources.length == 0) {
+            printUsage();
+            return 0;
+        }
+
+        compile(cfg, sources);
+        link(cfg, sources);
+
         return 0;
     } catch(Exception e) {
         writeln("Error: ", e.msg);
