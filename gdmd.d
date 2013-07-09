@@ -4,6 +4,7 @@
 
 module gdmd;
 
+import std.conv;
 import std.file;
 import std.path;
 import std.process;
@@ -21,7 +22,9 @@ class Config
     string scriptPath;  /// path to this script
     string dmdConfPath; /// path to dmd.conf
     string gdc;         /// path to GDC executable
-    string gdcVersion;  /// output of gdc -dumpversion
+
+    int gdcMajVer, gdcMinVer; /// GDC major/minor version
+    string machine;           /// output of gdc -dumpmachine
 }
 
 
@@ -115,6 +118,7 @@ string findScriptPath(string argv0)
  */
 string findGDC(string argv0)
 {
+    // FIXME: this does not work 100% of the time.
     auto c = match(baseName(argv0), `^(.*-)?g?dmd(-.*)?$`).captures;
     auto targetPrefix = c[1];
     auto gdcDir = absolutePath(dirName(argv0));
@@ -186,10 +190,39 @@ void readDmdConf(Config cfg) {
                 val = replace!((Captures!string m) => environment[m.hit.idup])
                               (val, regex(`%(\S+?)%`, "g"));
 
-                debug writefln("[conf] %s='%s'", var, val);
+                //debug writefln("[conf] %s='%s'", var, val);
                 environment[var] = val;
             }
         }
+    }
+}
+
+/**
+ * Invokes GDC to retrieve settings.
+ */
+void getGdcSettings(Config cfg)
+{
+    auto run(string[] args) {
+        auto rc = execute(args);
+        if (rc.status != 0)
+            throw new Exception("Failed to invoke %s: %d (%s)"
+                                .format(args[0], rc.status, rc.output));
+        return rc;
+    }
+
+    // Read GDC major/minor version
+    {
+        auto rc = run([cfg.gdc, "-dumpversion"]);
+        auto m = match(rc.output, `^(\d+)\.(\d+)`);
+        cfg.gdcMajVer = to!int(m.captures[1]);
+        cfg.gdcMinVer = to!int(m.captures[2]);
+    }
+
+    // Read target machine type
+    version(none)
+    {
+        auto rc = run([cfg.gdc, "-dumpmachine"]);
+        cfg.machine = chomp(rc.output);
     }
 }
 
@@ -204,6 +237,7 @@ Config init(string[] args)
     cfg.gdc = findGDC(args[0]);
 
     readDmdConf(cfg);
+    getGdcSettings(cfg);
 
     return cfg;
 }
@@ -213,10 +247,15 @@ Config init(string[] args)
  */
 int main(string[] args)
 {
-    auto cfg = init(args);
+    try {
+        auto cfg = init(args);
 
-    //printUsage();
-    return 0;
+        //printUsage();
+        return 0;
+    } catch(Exception e) {
+        writeln("Error: ", e.msg);
+        return 1;
+    }
 }
 
 
