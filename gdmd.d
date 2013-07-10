@@ -207,7 +207,10 @@ unittest
  */
 string src2exe(Config cfg, string srcfile)
 {
-    return setExtension(srcfile, cfg.execExt);
+    // Note: there's a bug in setExtension when cfg.execExt is empty (e.g. on
+    // Posix): it appends a stray dot to the resulting filename. So we replace
+    // the extension manually here.
+    return stripExtension(srcfile) ~ cfg.execExt;
 }
 
 unittest
@@ -215,6 +218,13 @@ unittest
     auto cfg = new Config();
     cfg.execExt = ".exe";
     assert(cfg.src2exe("prog.d") == "prog.exe");
+}
+
+unittest
+{
+    auto cfg = new Config();
+    cfg.execExt = "";
+    assert(cfg.src2exe("subdir/prog.d") == "subdir/prog");
 }
 
 /**
@@ -481,6 +491,7 @@ void parseArgs(Config cfg, string[] _args)
         } else if (auto m=match(arg, `^-od(.*)$`)) {
             cfg.outputDir = m.captures[1];
         } else if (auto m=match(arg, `^-of(.*)$`)) {
+            cfg.outputDir = dirName(m.captures[1]);
             cfg.outputFile = m.captures[1];
         } else if (arg == "-op") {
             cfg.keepPath = true;
@@ -533,7 +544,7 @@ string determineOutputFile(Config cfg)
 {
     assert(cfg.sources.length >= 1);
     return (cfg.outputFile.length > 0) ? cfg.outputFile
-                                       : cfg.src2exe(cfg.sources[0]);
+                                       : cfg.src2exe(baseName(cfg.sources[0]));
 }
 
 unittest
@@ -558,6 +569,26 @@ unittest
     assert(cfg.determineOutputFile() == "prog.exe");
 }
 
+unittest
+{
+    // Sigh, dmd's path handling is very quirky.
+    {
+        auto cfg = new Config();
+        cfg.parseArgs(["-ofprog", "src/test.d"]);
+        assert(cfg.determineOutputFile() == "prog");
+    }
+    {
+        auto cfg = new Config();
+        cfg.parseArgs(["-odobjdir", "src/test.d"]);
+        assert(cfg.determineOutputFile() == "test");
+    }
+    {
+        auto cfg = new Config();
+        cfg.parseArgs(["-ofobjdir/prog", "src/test.d"]);
+        assert(cfg.determineOutputFile() == "objdir/prog");
+    }
+}
+
 /**
  * Links the given sources files into the final executable.
  */
@@ -568,11 +599,19 @@ void link(Config cfg)
      */
     auto cmd = [ cfg.linker ] ~ cfg.linkFlags;
 
+    // Collect all object files.
     foreach (srcfile; cfg.sources) {
         cmd ~= cfg.src2obj(srcfile);
     }
 
-    cmd ~= [ "-o", cfg.determineOutputFile() ];
+    // Create target directory if it doesn't exist yet.
+    auto exefile = cfg.determineOutputFile();
+    auto exedir = dirName(exefile);
+    if (!exists(exedir))
+        mkdirRecurse(exedir);
+
+    // Specify output file
+    cmd ~= [ "-o", exefile ];
 
     /*
      * Invoke linker
