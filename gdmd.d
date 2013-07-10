@@ -183,7 +183,7 @@ unittest
  */
 string src2exe(Config cfg, string srcfile)
 {
-    return src2out(cfg, srcfile, cfg.execExt);
+    return baseName(srcfile, ".d") ~ cfg.execExt;
 }
 
 unittest
@@ -492,6 +492,37 @@ void compile(Config cfg)
 }
 
 /**
+ * Determine output file given current configuration.
+ */
+string determineOutputFile(Config cfg)
+{
+    assert(cfg.sources.length >= 1);
+    return (cfg.outputFile.length > 0) ? cfg.outputFile
+                                       : cfg.src2exe(cfg.sources[0]);
+}
+
+unittest
+{
+    // If no explicit output file is given, use first .d file as basename.
+    auto cfg = new Config();
+    cfg.sources = ["test.d", "module.d"];
+    cfg.execExt = ".exe";
+    assert(cfg.determineOutputFile() == "test.exe");
+
+    // DMD appears to only use -od for object files, not the final executable.
+    cfg.outputDir = "subdir";
+    assert(cfg.determineOutputFile() == "test.exe");
+
+    // If output filename is specified, we should be using that instead
+    cfg.outputFile = "prog.exe";
+    assert(cfg.determineOutputFile() == "prog.exe");
+
+    // That should still hold if outputDir wasn't specified
+    cfg.outputDir = "";
+    assert(cfg.determineOutputFile() == "prog.exe");
+}
+
+/**
  * Links the given sources files into the final executable.
  */
 void link(Config cfg)
@@ -499,16 +530,13 @@ void link(Config cfg)
     /*
      * Construct link command
      */
-    assert(cfg.sources.length >= 1);
-    auto outfile = (cfg.outputFile.length > 0) ? cfg.outputFile
-                                               : cfg.src2exe(cfg.sources[0]);
     auto cmd = [ cfg.linker ] ~ cfg.linkFlags;
 
     foreach (srcfile; cfg.sources) {
         cmd ~= cfg.src2obj(srcfile);
     }
 
-    cmd ~= [ "-o", outfile ];
+    cmd ~= [ "-o", cfg.determineOutputFile() ];
 
     /*
      * Invoke linker
