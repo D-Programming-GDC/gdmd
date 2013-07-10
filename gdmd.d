@@ -4,6 +4,7 @@
 
 module gdmd;
 
+import std.algorithm : canFind;
 import std.array : empty, front, popFront;
 import std.conv;
 import std.file;
@@ -317,8 +318,9 @@ Config init(string[] args)
  * Parse command-line arguments and sets up the appropriate settings in the
  * Config object.
  */
-void parseArgs(Config cfg, string[] args)
+void parseArgs(Config cfg, string[] _args)
 {
+    auto args = _args;
     while (!args.empty) {
         auto arg = args.front;
 
@@ -382,6 +384,21 @@ void parseArgs(Config cfg, string[] args)
             cfg.gdcFlags ~= "-fproperty";
         } else if (arg == "-inline") {
             cfg.gdcFlags ~= "-finline-functions";
+        } else if (auto m=match(arg, `^-I(.*)$`)) {
+            cfg.gdcFlags ~= ["-I", expandTilde(m.captures[1])];
+        } else if (auto m=match(arg, `^-J(.*)$`)) {
+            cfg.gdcFlags ~= ["-J", expandTilde(m.captures[1])];
+        } else if (auto m=match(arg, `^-L(.*)$`)) {
+        } else if (arg == "-lib") {
+            // TBD
+        } else if (arg == "-O") {
+            cfg.gdcFlags ~= ["-O3"];
+            // FIXME: this is rather ugly
+            if (!canFind(_args, "-inline"))
+                cfg.gdcFlags ~= ["-fno-inline-functions"];
+        } else if (arg == "-o-") {
+            cfg.gdcFlags ~= ["-fsyntax-only"];
+            cfg.dontLink = true;
         } else if (match(arg, regex(`\.d$`, "i"))) {
             cfg.sources ~= arg;
         } else if (match(arg, regex(`\.ddoc$`, "i"))) {
