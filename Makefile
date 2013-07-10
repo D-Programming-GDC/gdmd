@@ -18,21 +18,26 @@
 # <http://www.gnu.org/licenses/>.
 
 
+DC = gdc
+DFLAGS = -O3 -frelease
 DESTDIR = 
 prefix = /usr/local
 bindir = $(prefix)/bin
 man1dir = $(prefix)/share/man/man1
 
-src = dmd-script
+src = gdmd.d
+exe = gdmd
 man = dmd-script.1
 
-all:
+all:	$(exe)
 
 
 install: $(DESTDIR)$(bindir)/gdmd $(DESTDIR)$(man1dir)/gdmd.1
 
+$(exe): $(src)
+	-gdc $(DFLAGS) -o $@ $<
 
-$(DESTDIR)$(bindir)/gdmd: $(src)
+$(DESTDIR)$(bindir)/gdmd: $(exe)
 	-rm -f $@
 	-install $< $@
 
@@ -46,5 +51,6 @@ uninstall:
 	-rm -f $(DESTDIR)$(bindir)/gdmd
 	-rm -f $(DESTDIR)$(man1dir)/gdmd.1
 
-
+clean:
+	-rm -f $(exe) *.o
 
