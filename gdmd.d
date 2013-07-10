@@ -49,6 +49,7 @@ class Config
     string[] ddocs;     /// list of DDoc macro files
 
     bool dontLink;      /// whether to skip linking stage
+    bool dbg;           /// debug flag
 }
 
 
@@ -317,10 +318,24 @@ void parseArgs(Config cfg, string[] args)
             throw new Exception("unrecognized switch '%s'".format(arg));
         } else if (auto m=match(arg, `^-defaultlib=(.*)$`)) {
             cfg.linkFlags ~= [ "-defaultlib", m.captures[1] ];
+        } else if (auto m=match(arg, `^-deps=(.*)$`)) {
+            cfg.gdcFlags ~= (m.captures[1].length > 0) ?
+                                "-fdeps=" ~ m.captures[1] : "-fdeps";
         } else if (arg == "-g" || arg == "-gc") {
+            cfg.dbg = true;
             cfg.gdcFlags ~= "-g";
         } else if (arg == "-gs") {
             cfg.gdcFlags ~= "-fno-omit-frame-pointer";
+        } else if (arg == "-gt") {
+            throw new Exception("use -profile instead of -gt");
+        } else if (arg == "-gx") {
+            cfg.gdcFlags ~= "-fstack-protector";
+        } else if (arg == "-H") {
+            // TBD
+        } else if (auto m=match(arg, regex(`-Hd(.*)$`))) {
+            // TBD
+        } else if (auto m=match(arg, regex(`-Hf(.*)$`))) {
+            // TBD
         } else if (arg == "--help") {
             printUsage();
             throw new ExitException(0);
