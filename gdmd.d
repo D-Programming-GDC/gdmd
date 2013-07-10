@@ -131,28 +131,42 @@ EOF"
 }
 
 /**
+ * Searches $PATH to find the given program.
+ */
+string findBin(string program)
+{
+    auto binpaths = environment["PATH"];
+    foreach (path; binpaths.split(pathSeparator)) {
+        auto exe = buildNormalizedPath(path, program);
+        if (exists(exe)) {
+            return exe;
+        }
+    }
+    return "";
+}
+
+/**
  * Finds the path to this program.
  */
 string findScriptPath(string argv0)
+out(path) { assert(path.length != 0); }
+body
 {
-    // FIXME: this is not 100% reliable; we need equivalent functionality to
-    // Perl's FindBin.
-    return absolutePath(dirName(argv0));
+    return findBin(argv0);
 }
 
 /**
  * Finds GDC.
  */
 string findGDC()
+out(path) { assert(path.length != 0); }
+body
 {
-    auto binpaths = environment["PATH"];
-    foreach (path; binpaths.split(pathSeparator)) {
-        auto exe = buildNormalizedPath(path, "gdc");
-        if (exists(exe)) {
-            return exe;
-        }
-    }
-    throw new Exception("Unable to find gdc executable");
+    auto gdc = findBin("gdc");
+    if (gdc.length == 0)
+        throw new Exception("Unable to find gdc executable");
+
+    return gdc;
 }
 
 /**
@@ -270,8 +284,10 @@ Config init(string[] args)
     auto cfg = new Config();
     cfg.scriptPath = findScriptPath(args[0]);
     cfg.gdc = findGDC();
-    debug writeln("[conf] gdc = ", cfg.gdc);
     cfg.linker = cfg.gdc;
+
+    debug writeln("[conf] scriptPath = ", cfg.scriptPath);
+    debug writeln("[conf] gdc = ", cfg.gdc);
 
     readDmdConf(cfg);
     getGdcSettings(cfg);
