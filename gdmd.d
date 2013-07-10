@@ -28,6 +28,14 @@ class ExitException : Exception {
 }
 
 /**
+ * Convenient syntactic sugar for exiting program.
+ */
+void exit(int status=0, string file=__FILE__, size_t line=__LINE__) {
+    throw new ExitException(status, file, line);
+}
+
+
+/**
  * Encapsulates current configuration state, so that we don't have to sprinkle
  * globals around everywhere.
  */
@@ -316,6 +324,7 @@ void parseArgs(Config cfg, string[] args)
 
         if (arg == "-arch") {
             args.popFront();
+            // TBD: bounds check
             cfg.gdcFlags ~= [ "-arch", args.front ];
         } else if (arg == "-c") {
             cfg.dontLink = true;
@@ -362,7 +371,7 @@ void parseArgs(Config cfg, string[] args)
             // TBD
         } else if (arg == "--help") {
             printUsage();
-            throw new ExitException(0);
+            exit(0);
         } else if (arg == "-framework") {
             args.popFront();
             // TBD: bounds check
@@ -442,7 +451,7 @@ int main(string[] args)
 
         if (cfg.sources.length == 0) {
             printUsage();
-            return 0;
+            exit(0);
         }
 
         compile(cfg);
