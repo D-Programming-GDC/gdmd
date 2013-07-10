@@ -146,7 +146,17 @@ string findGDC(string argv0)
     // FIXME: this does not work 100% of the time.
     auto c = match(baseName(argv0), `^(.*-)?g?dmd(-.*)?$`).captures;
     auto targetPrefix = c[1];
-    auto gdcDir = absolutePath(dirName(argv0));
+	
+	auto which = executeShell("which gdc");
+	if (which.status == 0){
+		writeln("Failed to execute which.");
+	}
+	else {
+		writefln("which returned %s", which.output);
+	}
+	
+	auto gdcDir = absolutePath(dirName(which.output));
+	writefln("new findGDC: gdcDir=%s", gdcDir);
     return buildNormalizedPath(gdcDir, targetPrefix ~ "gdc" ~ c[2]);
 }
 
