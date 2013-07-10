@@ -141,13 +141,19 @@ string findScriptPath(string argv0)
 /**
  * Finds GDC.
  */
-string findGDC(string argv0)
+string findGDC()
 {
-    // FIXME: this does not work 100% of the time.
-    auto c = match(baseName(argv0), `^(.*-)?g?dmd(-.*)?$`).captures;
-    auto targetPrefix = c[1];
-    auto gdcDir = absolutePath(dirName(argv0));
-    return buildNormalizedPath(gdcDir, targetPrefix ~ "gdc" ~ c[2]);
+	auto binpaths = environment.get("PATH");
+
+	foreach (path; binpaths.split(pathSeparator))
+	{
+	   auto exe = path ~ dirSeparator ~ "gdc";
+	   if (exists (exe)) {
+	     return exe;
+	   }
+	}
+	
+	return "";
 }
 
 /**
@@ -262,14 +268,7 @@ Config init(string[] args)
 {
     auto cfg = new Config();
     cfg.scriptPath = findScriptPath(args[0]);
-	auto which = executeShell("which gdc");
-	if (which.status == 0){
-		writeln("Failed to execute which.");
-	}
-	else {
-		writefln("which returned %s", which.output);
-	}
-    cfg.gdc = findGDC(which.output);
+    cfg.gdc = findGDC();
     cfg.linker = cfg.gdc;
 
     readDmdConf(cfg);
