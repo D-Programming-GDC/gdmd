@@ -21,7 +21,7 @@ class ExitException : Exception {
     int status;
     this(int exitStatus = 0, string file = __FILE__, size_t line = __LINE__)
     {
-        super("Program exit", file, line);
+        super("", file, line);
     }
 }
 
@@ -308,9 +308,15 @@ void parseArgs(Config cfg, string[] args)
             cfg.gdcFlags ~= [ "-Wdeprecated", "-Werror" ];
         } else if (arg == "-dw") {
             cfg.gdcFlags ~= "-Wdeprecated";
-
-        /* TBD: debug flags */
-
+        } else if (auto m=match(arg, `^-debug(?:=(.*))?$`)) {
+            cfg.gdcFlags ~= (m.captures[1].length > 0) ?
+                                "-fdebug="~m.captures[1] : "-fdebug";
+        } else if (auto m=match(arg, `^-debuglib=(.*)$`)) {
+            cfg.linkFlags ~= [ "-debuglib", m.captures[1] ];
+        } else if (match(arg, `^-debug.*$`)) {
+            throw new Exception("unrecognized switch '%s'".format(arg));
+        } else if (auto m=match(arg, `^-defaultlib=(.*)$`)) {
+            cfg.linkFlags ~= [ "-defaultlib", m.captures[1] ];
         } else if (arg == "-g" || arg == "-gc") {
             cfg.gdcFlags ~= "-g";
         } else if (arg == "-gs") {
@@ -328,6 +334,9 @@ void parseArgs(Config cfg, string[] args)
 
         args.popFront();
     }
+
+    debug writeln("[conf] gdc flags = ", cfg.gdcFlags);
+    debug writeln("[conf] link flags = ", cfg.linkFlags);
 }
 
 /**
@@ -396,7 +405,7 @@ int main(string[] args)
     } catch(ExitException e) {
         return e.status;
     } catch(Exception e) {
-        writeln("Error: ", e.msg);
+        writeln(e.msg);
         return 1;
     }
 }
