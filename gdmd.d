@@ -146,17 +146,7 @@ string findGDC(string argv0)
     // FIXME: this does not work 100% of the time.
     auto c = match(baseName(argv0), `^(.*-)?g?dmd(-.*)?$`).captures;
     auto targetPrefix = c[1];
-	
-	auto which = executeShell("which gdc");
-	if (which.status == 0){
-		writeln("Failed to execute which.");
-	}
-	else {
-		writefln("which returned %s", which.output);
-	}
-	
-	auto gdcDir = absolutePath(dirName(which.output));
-	writefln("new findGDC: gdcDir=%s", gdcDir);
+    auto gdcDir = absolutePath(dirName(argv0));
     return buildNormalizedPath(gdcDir, targetPrefix ~ "gdc" ~ c[2]);
 }
 
@@ -272,7 +262,14 @@ Config init(string[] args)
 {
     auto cfg = new Config();
     cfg.scriptPath = findScriptPath(args[0]);
-    cfg.gdc = findGDC(args[0]);
+	auto which = executeShell("which gdc");
+	if (which.status == 0){
+		writeln("Failed to execute which.");
+	}
+	else {
+		writefln("which returned %s", which.output);
+	}
+    cfg.gdc = findGDC(which.output);
     cfg.linker = cfg.gdc;
 
     readDmdConf(cfg);
