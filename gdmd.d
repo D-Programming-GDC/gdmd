@@ -389,6 +389,7 @@ void parseArgs(Config cfg, string[] _args)
         } else if (auto m=match(arg, `^-J(.*)$`)) {
             cfg.gdcFlags ~= ["-J", expandTilde(m.captures[1])];
         } else if (auto m=match(arg, `^-L(.*)$`)) {
+            cfg.linkFlags ~= "-Wl," ~ m.captures[1];
         } else if (arg == "-lib") {
             // TBD
         } else if (arg == "-O") {
