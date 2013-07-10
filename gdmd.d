@@ -13,6 +13,8 @@ import std.regex;
 import std.stdio;
 import std.string;
 
+enum GdmdConfFile = "dmd.conf"; // FIXME: should rename
+
 
 /**
  * Dummy exception object to implement exit().
@@ -32,7 +34,7 @@ class ExitException : Exception {
 class Config
 {
     string scriptPath;  /// path to this script
-    string dmdConfPath; /// path to dmd.conf
+    string confPath;    /// path to dmd.conf
     string gdc;         /// path to GDC executable
     string linker;      /// path to linker
 
@@ -166,9 +168,9 @@ string findDmdConf(Config cfg) {
     ];
 
     foreach (path; confPaths) {
-        auto confPath = buildPath(path, "dmd.conf");
+        auto confPath = buildPath(path, GdmdConfFile);
         if (exists(confPath)) {
-            cfg.dmdConfPath = confPath;
+            cfg.confPath = confPath;
             return confPath;
         }
     }
@@ -176,7 +178,8 @@ string findDmdConf(Config cfg) {
 }
 
 /**
- * Loads environment settings from dmd.conf and stores them in the environment.
+ * Loads environment settings from GdmdConfFile and stores them in the
+ * environment.
  */
 void readDmdConf(Config cfg) {
     auto dmdConf = findDmdConf(cfg);
@@ -210,8 +213,9 @@ void readDmdConf(Config cfg) {
                 string var = m.captures[1].idup;
                 string val = m.captures[2].idup;
 
-                // The special name %@P% is replaced with the path to dmd.conf
-                val = replace(val, regex(`%\@P%`, "g"), cfg.dmdConfPath);
+                // The special name %@P% is replaced with the path to
+                // GdmdConfFile
+                val = replace(val, regex(`%\@P%`, "g"), cfg.confPath);
 
                 // Names enclosed by %% are searched for in the existing
                 // environment and inserted.
