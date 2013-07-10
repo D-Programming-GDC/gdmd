@@ -141,13 +141,16 @@ string findScriptPath(string argv0)
 /**
  * Finds GDC.
  */
-string findGDC(string argv0)
+string findGDC()
 {
-    // FIXME: this does not work 100% of the time.
-    auto c = match(baseName(argv0), `^(.*-)?g?dmd(-.*)?$`).captures;
-    auto targetPrefix = c[1];
-    auto gdcDir = absolutePath(dirName(argv0));
-    return buildNormalizedPath(gdcDir, targetPrefix ~ "gdc" ~ c[2]);
+    auto binpaths = environment["PATH"];
+    foreach (path; binpaths.split(pathSeparator)) {
+        auto exe = buildNormalizedPath(path, "gdc");
+        if (exists(exe)) {
+            return exe;
+        }
+    }
+    throw new Exception("Unable to find gdc executable");
 }
 
 /**
@@ -262,7 +265,8 @@ Config init(string[] args)
 {
     auto cfg = new Config();
     cfg.scriptPath = findScriptPath(args[0]);
-    cfg.gdc = findGDC(args[0]);
+    cfg.gdc = findGDC();
+    debug writeln("[conf] gdc = ", cfg.gdc);
     cfg.linker = cfg.gdc;
 
     readDmdConf(cfg);
@@ -339,6 +343,10 @@ void parseArgs(Config cfg, string[] args)
         } else if (arg == "--help") {
             printUsage();
             throw new ExitException(0);
+        } else if (arg == "-framework") {
+            args.popFront();
+            // TBD: bounds check
+            cfg.linkFlags ~= [ "-framework", args.front ];
         } else if (match(arg, regex(`\.d$`, "i"))) {
             cfg.sources ~= arg;
         } else if (match(arg, regex(`\.ddoc$`, "i"))) {
