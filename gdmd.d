@@ -4,6 +4,7 @@
 
 module gdmd;
 
+import std.array : empty, front, popFront;
 import std.conv;
 import std.file;
 import std.path;
@@ -12,6 +13,17 @@ import std.regex;
 import std.stdio;
 import std.string;
 
+
+/**
+ * Dummy exception object to implement exit().
+ */
+class ExitException : Exception {
+    int status;
+    this(int exitStatus = 0, string file = __FILE__, size_t line = __LINE__)
+    {
+        super("Program exit", file, line);
+    }
+}
 
 /**
  * Encapsulates current configuration state, so that we don't have to sprinkle
@@ -29,6 +41,14 @@ class Config
 
     string objExt;      /// extension of object files
     string execExt;     /// extension of executables
+
+    string[] gdcFlags;  /// list of flags to pass to GDC
+    string[] linkFlags; /// list of flags to pass to linker
+
+    string[] sources;   /// list of source files
+    string[] ddocs;     /// list of DDoc macro files
+
+    bool dontLink;      /// whether to skip linking stage
 }
 
 
@@ -261,13 +281,62 @@ Config init(string[] args)
 }
 
 /**
- * Compiles the given source file.
+ * Parse command-line arguments and sets up the appropriate settings in the
+ * Config object.
  */
-void compile(Config cfg, string[] sources)
+void parseArgs(Config cfg, string[] args)
 {
-    foreach (srcfile; sources) {
-        // TBD: incorporate other necessary flags
-        auto cmd = [ cfg.gdc, "-c", srcfile ];
+    while (!args.empty) {
+        auto arg = args.front;
+
+        if (arg == "-arch") {
+            args.popFront();
+            cfg.gdcFlags ~= [ "-arch", args.front ];
+        } else if (arg == "-c") {
+            cfg.dontLink = true;
+        } else if (arg == "-cov") {
+            cfg.gdcFlags ~= [ "-fprofile-arcs", "-ftest-coverage" ];
+        } else if (arg == "-D") {
+            // TBD
+        } else if (auto m = match(arg, `-Dd(.*)$`)) {
+            // TBD
+        } else if (auto m = match(arg, `-Df(.*)$`)) {
+            // TBD
+        } else if (arg == "-d") {
+            cfg.gdcFlags ~= "-Wno-deprecated";
+        } else if (arg == "-de") {
+            cfg.gdcFlags ~= [ "-Wdeprecated", "-Werror" ];
+        } else if (arg == "-dw") {
+            cfg.gdcFlags ~= "-Wdeprecated";
+
+        /* TBD: debug flags */
+
+        } else if (arg == "-g" || arg == "-gc") {
+            cfg.gdcFlags ~= "-g";
+        } else if (arg == "-gs") {
+            cfg.gdcFlags ~= "-fno-omit-frame-pointer";
+        } else if (arg == "--help") {
+            printUsage();
+            throw new ExitException(0);
+        } else if (match(arg, regex(`\.d$`, "i"))) {
+            cfg.sources ~= arg;
+        } else if (match(arg, regex(`\.ddoc$`, "i"))) {
+            cfg.ddocs ~= arg;
+        } else {
+            // TBD: append to list of obj files
+        }
+
+        args.popFront();
+    }
+}
+
+/**
+ * Compiles the given source files.
+ */
+void compile(Config cfg)
+{
+    foreach (srcfile; cfg.sources) {
+        auto cmd = [ cfg.gdc ] ~ cfg.gdcFlags ~ [ "-c", srcfile ];
         debug writeln("[exec] ", cmd.join(" "));
         auto rc = execute(cmd);
         if (rc.status != 0)
@@ -276,16 +345,19 @@ void compile(Config cfg, string[] sources)
     }
 }
 
-void link(Config cfg, string[] sources)
+/**
+ * Links the given sources files into the final executable.
+ */
+void link(Config cfg)
 {
     /*
      * Construct link command
      */
-    assert(sources.length >= 1);
-    auto outfile = baseName(sources[0], ".d") ~ cfg.execExt;
-    auto cmd = [ cfg.linker ];
+    assert(cfg.sources.length >= 1);
+    auto outfile = baseName(cfg.sources[0], ".d") ~ cfg.execExt;
+    auto cmd = [ cfg.linker ] ~ cfg.linkFlags;
 
-    foreach (srcfile; sources) {
+    foreach (srcfile; cfg.sources) {
         auto objfile = baseName(srcfile, ".d") ~ cfg.objExt;
         cmd ~= objfile;
     }
@@ -308,19 +380,21 @@ int main(string[] args)
 {
     try {
         auto cfg = init(args);
+        parseArgs(cfg, args);
 
-        // TBD: parse command-line options
-        auto sources = args[1..$];
-
-        if (sources.length == 0) {
+        if (cfg.sources.length == 0) {
             printUsage();
             return 0;
         }
 
-        compile(cfg, sources);
-        link(cfg, sources);
+        compile(cfg);
+
+        if (!cfg.dontLink)
+            link(cfg);
 
         return 0;
+    } catch(ExitException e) {
+        return e.status;
     } catch(Exception e) {
         writeln("Error: ", e.msg);
         return 1;
