@@ -438,7 +438,7 @@ int main(string[] args)
 {
     try {
         auto cfg = init(args);
-        parseArgs(cfg, args);
+        parseArgs(cfg, args[1..$]);
 
         if (cfg.sources.length == 0) {
             printUsage();
