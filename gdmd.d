@@ -178,6 +178,9 @@ unittest
 
     cfg.keepPath = true;
     assert(cfg.src2out("subdir/prog.d", ".o") == "subdir/prog.o");
+
+    cfg.outputDir = "objdir";
+    assert(cfg.src2out("subdir/prog.d", ".o") == "objdir/subdir/prog.o");
 }
 
 /**
@@ -204,7 +207,7 @@ unittest
  */
 string src2exe(Config cfg, string srcfile)
 {
-    return baseName(srcfile, ".d") ~ cfg.execExt;
+    return setExtension(srcfile, cfg.execExt);
 }
 
 unittest
@@ -502,9 +505,18 @@ void parseArgs(Config cfg, string[] _args)
 void compile(Config cfg)
 {
     foreach (srcfile; cfg.sources) {
+        auto objfile = cfg.src2obj(srcfile);
+
+        // If target directory doesn't exist yet, create it.
+        auto objdir = dirName(objfile);
+        if (!exists(objdir)) {
+            debug writefln("[exec] mkdirRecurse(%s)", objdir);
+            mkdirRecurse(objdir);
+        }
+
+        // Invoke compiler
         auto cmd = [ cfg.gdc ] ~ cfg.gdcFlags ~ [
-            "-c", srcfile,
-            "-o", cfg.src2obj(srcfile)
+            "-c", srcfile, "-o", objfile
         ];
         debug writeln("[exec] ", cmd.join(" "));
         auto rc = execute(cmd);
