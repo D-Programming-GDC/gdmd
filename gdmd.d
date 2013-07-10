@@ -61,8 +61,9 @@ class Config
     string[] sources;   /// list of source files
     string[] ddocs;     /// list of DDoc macro files
 
+    bool keepPath;      /// whether to preserve source path for output files
     bool dontLink;      /// whether to skip linking stage
-    bool dbg;           /// debug flag
+    bool debugMode;     /// debug flag
 }
 
 
@@ -146,9 +147,17 @@ EOF"
  */
 string src2out(Config cfg, string srcfile, string targetExt)
 {
-    return (cfg.outputDir.length > 0) ?
-        buildPath(cfg.outputDir, baseName(srcfile, ".d") ~ targetExt) :
-        baseName(srcfile, ".d") ~ targetExt;
+    string[] outpath;
+
+    if (cfg.outputDir.length > 0)
+        outpath ~= cfg.outputDir;
+
+    if (cfg.keepPath)
+        outpath ~= setExtension(srcfile, targetExt);
+    else
+        outpath ~= setExtension(baseName(srcfile), targetExt);
+
+    return buildPath(outpath);
 }
 
 unittest
@@ -161,7 +170,18 @@ unittest
     assert(cfg.src2out("prog.d", ".o") == "subdir" ~ dirSeparator ~ "prog.o");
 }
 
+unittest
+{
+    auto cfg = new Config();
+    cfg.keepPath = false;
+    assert(cfg.src2out("subdir/prog.d", ".o") == "prog.o");
+
+    cfg.keepPath = true;
+    assert(cfg.src2out("subdir/prog.d", ".o") == "subdir/prog.o");
+}
+
 /**
+ * Returns object filename corresponding to a given source.
  * Params: srcfile = source filename.
  * Returns: object filename.
  */
@@ -178,6 +198,7 @@ unittest
 }
 
 /**
+ * Returns executable filename corresponding to a given source.
  * Params: srcfile = source filename.
  * Returns: executable filename.
  */
@@ -411,7 +432,7 @@ void parseArgs(Config cfg, string[] _args)
             cfg.gdcFlags ~= (m.captures[1].length > 0) ?
                                 "-fdeps=" ~ m.captures[1] : "-fdeps";
         } else if (arg == "-g" || arg == "-gc") {
-            cfg.dbg = true;
+            cfg.debugMode = true;
             cfg.gdcFlags ~= "-g";
         } else if (arg == "-gs") {
             cfg.gdcFlags ~= "-fno-omit-frame-pointer";
@@ -458,6 +479,8 @@ void parseArgs(Config cfg, string[] _args)
             cfg.outputDir = m.captures[1];
         } else if (auto m=match(arg, `^-of(.*)$`)) {
             cfg.outputFile = m.captures[1];
+        } else if (arg == "-op") {
+            cfg.keepPath = true;
         } else if (match(arg, regex(`\.d$`, "i"))) {
             cfg.sources ~= arg;
         } else if (match(arg, regex(`\.ddoc$`, "i"))) {
@@ -479,10 +502,10 @@ void parseArgs(Config cfg, string[] _args)
 void compile(Config cfg)
 {
     foreach (srcfile; cfg.sources) {
-        auto cmd = [ cfg.gdc ] ~ cfg.gdcFlags ~ [ "-c", srcfile ];
-        if (cfg.outputDir.length > 0) {
-            cmd ~= [ "-o", cfg.src2obj(srcfile) ];
-        }
+        auto cmd = [ cfg.gdc ] ~ cfg.gdcFlags ~ [
+            "-c", srcfile,
+            "-o", cfg.src2obj(srcfile)
+        ];
         debug writeln("[exec] ", cmd.join(" "));
         auto rc = execute(cmd);
         if (rc.status != 0)
@@ -510,6 +533,7 @@ unittest
     assert(cfg.determineOutputFile() == "test.exe");
 
     // DMD appears to only use -od for object files, not the final executable.
+    // So outputDir shouldn't affect the results.
     cfg.outputDir = "subdir";
     assert(cfg.determineOutputFile() == "test.exe");
 
