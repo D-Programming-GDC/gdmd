@@ -367,6 +367,12 @@ void parseArgs(Config cfg, string[] args)
             args.popFront();
             // TBD: bounds check
             cfg.linkFlags ~= [ "-framework", args.front ];
+        } else if (arg == "-ignore") {
+            cfg.gdcFlags ~= "-fignore-unknown-pragmas";
+        } else if (arg == "-property") {
+            cfg.gdcFlags ~= "-fproperty";
+        } else if (arg == "-inline") {
+            cfg.gdcFlags ~= "-finline-functions";
         } else if (match(arg, regex(`\.d$`, "i"))) {
             cfg.sources ~= arg;
         } else if (match(arg, regex(`\.ddoc$`, "i"))) {
