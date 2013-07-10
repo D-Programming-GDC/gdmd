@@ -35,7 +35,6 @@ void exit(int status=0, string file=__FILE__, size_t line=__LINE__) {
     throw new ExitException(status, file, line);
 }
 
-
 /**
  * Encapsulates current configuration state, so that we don't have to sprinkle
  * globals around everywhere.
@@ -55,6 +54,9 @@ class Config
 
     string[] gdcFlags;  /// list of flags to pass to GDC
     string[] linkFlags; /// list of flags to pass to linker
+
+    string outputDir;   /// path to prepend to output files
+    string outputFile;  /// path to prepend to output files
 
     string[] sources;   /// list of source files
     string[] ddocs;     /// list of DDoc macro files
@@ -137,6 +139,58 @@ Usage:
   -Xffilename    write JSON file to filename
 EOF"
     );
+}
+
+/**
+ * Convenience function for determining output filename given a source file.
+ */
+string src2out(Config cfg, string srcfile, string targetExt)
+{
+    return (cfg.outputDir.length > 0) ?
+        buildPath(cfg.outputDir, baseName(srcfile, ".d") ~ targetExt) :
+        baseName(srcfile, ".d") ~ targetExt;
+}
+
+unittest
+{
+    auto cfg = new Config();
+    assert(cfg.outputDir.length == 0);
+    assert(cfg.src2out("prog.d", ".o") == "prog.o");
+
+    cfg.outputDir = "subdir";
+    assert(cfg.src2out("prog.d", ".o") == "subdir" ~ dirSeparator ~ "prog.o");
+}
+
+/**
+ * Params: srcfile = source filename.
+ * Returns: object filename.
+ */
+string src2obj(Config cfg, string srcfile)
+{
+    return src2out(cfg, srcfile, cfg.objExt);
+}
+
+unittest
+{
+    auto cfg = new Config();
+    cfg.objExt = ".obj";
+    assert(cfg.src2obj("prog.d") == "prog.obj");
+}
+
+/**
+ * Params: srcfile = source filename.
+ * Returns: executable filename.
+ */
+string src2exe(Config cfg, string srcfile)
+{
+    return src2out(cfg, srcfile, cfg.execExt);
+}
+
+unittest
+{
+    auto cfg = new Config();
+    cfg.execExt = ".exe";
+    assert(cfg.src2exe("prog.d") == "prog.exe");
 }
 
 /**
@@ -400,6 +454,10 @@ void parseArgs(Config cfg, string[] _args)
         } else if (arg == "-o-") {
             cfg.gdcFlags ~= ["-fsyntax-only"];
             cfg.dontLink = true;
+        } else if (auto m=match(arg, `^-od(.*)$`)) {
+            cfg.outputDir = m.captures[1];
+        } else if (auto m=match(arg, `^-of(.*)$`)) {
+            cfg.outputFile = m.captures[1];
         } else if (match(arg, regex(`\.d$`, "i"))) {
             cfg.sources ~= arg;
         } else if (match(arg, regex(`\.ddoc$`, "i"))) {
@@ -422,6 +480,9 @@ void compile(Config cfg)
 {
     foreach (srcfile; cfg.sources) {
         auto cmd = [ cfg.gdc ] ~ cfg.gdcFlags ~ [ "-c", srcfile ];
+        if (cfg.outputDir.length > 0) {
+            cmd ~= [ "-o", cfg.src2obj(srcfile) ];
+        }
         debug writeln("[exec] ", cmd.join(" "));
         auto rc = execute(cmd);
         if (rc.status != 0)
@@ -439,12 +500,12 @@ void link(Config cfg)
      * Construct link command
      */
     assert(cfg.sources.length >= 1);
-    auto outfile = baseName(cfg.sources[0], ".d") ~ cfg.execExt;
+    auto outfile = (cfg.outputFile.length > 0) ? cfg.outputFile
+                                               : cfg.src2exe(cfg.sources[0]);
     auto cmd = [ cfg.linker ] ~ cfg.linkFlags;
 
     foreach (srcfile; cfg.sources) {
-        auto objfile = baseName(srcfile, ".d") ~ cfg.objExt;
-        cmd ~= objfile;
+        cmd ~= cfg.src2obj(srcfile);
     }
 
     cmd ~= [ "-o", outfile ];
