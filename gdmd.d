@@ -4,6 +4,7 @@
 
 module gdmd;
 
+import std.algorithm : canFind;
 import std.array : empty, front, popFront;
 import std.conv;
 import std.file;
@@ -12,6 +13,8 @@ import std.process;
 import std.regex;
 import std.stdio;
 import std.string;
+
+enum GdmdConfFile = "dmd.conf"; // FIXME: should rename
 
 
 /**
@@ -26,13 +29,20 @@ class ExitException : Exception {
 }
 
 /**
+ * Convenient syntactic sugar for exiting program.
+ */
+void exit(int status=0, string file=__FILE__, size_t line=__LINE__) {
+    throw new ExitException(status, file, line);
+}
+
+/**
  * Encapsulates current configuration state, so that we don't have to sprinkle
  * globals around everywhere.
  */
 class Config
 {
     string scriptPath;  /// path to this script
-    string dmdConfPath; /// path to dmd.conf
+    string confPath;    /// path to dmd.conf
     string gdc;         /// path to GDC executable
     string linker;      /// path to linker
 
@@ -45,11 +55,15 @@ class Config
     string[] gdcFlags;  /// list of flags to pass to GDC
     string[] linkFlags; /// list of flags to pass to linker
 
+    string outputDir;   /// path to prepend to output files
+    string outputFile;  /// path to prepend to output files
+
     string[] sources;   /// list of source files
     string[] ddocs;     /// list of DDoc macro files
 
+    bool keepPath;      /// whether to preserve source path for output files
     bool dontLink;      /// whether to skip linking stage
-    bool dbg;           /// debug flag
+    bool debugMode;     /// debug flag
 }
 
 
@@ -129,31 +143,127 @@ EOF"
 }
 
 /**
+ * Convenience function for determining output filename given a source file.
+ */
+string src2out(Config cfg, string srcfile, string targetExt)
+{
+    string[] outpath;
+
+    if (cfg.outputDir.length > 0)
+        outpath ~= cfg.outputDir;
+
+    if (cfg.keepPath)
+        outpath ~= setExtension(srcfile, targetExt);
+    else
+        outpath ~= setExtension(baseName(srcfile), targetExt);
+
+    return buildPath(outpath);
+}
+
+unittest
+{
+    auto cfg = new Config();
+    assert(cfg.outputDir.length == 0);
+    assert(cfg.src2out("prog.d", ".o") == "prog.o");
+
+    cfg.outputDir = "subdir";
+    assert(cfg.src2out("prog.d", ".o") == "subdir" ~ dirSeparator ~ "prog.o");
+}
+
+unittest
+{
+    auto cfg = new Config();
+    cfg.keepPath = false;
+    assert(cfg.src2out("subdir/prog.d", ".o") == "prog.o");
+
+    cfg.keepPath = true;
+    assert(cfg.src2out("subdir/prog.d", ".o") == "subdir/prog.o");
+
+    cfg.outputDir = "objdir";
+    assert(cfg.src2out("subdir/prog.d", ".o") == "objdir/subdir/prog.o");
+}
+
+/**
+ * Returns object filename corresponding to a given source.
+ * Params: srcfile = source filename.
+ * Returns: object filename.
+ */
+string src2obj(Config cfg, string srcfile)
+{
+    return src2out(cfg, srcfile, cfg.objExt);
+}
+
+unittest
+{
+    auto cfg = new Config();
+    cfg.objExt = ".obj";
+    assert(cfg.src2obj("prog.d") == "prog.obj");
+}
+
+/**
+ * Returns executable filename corresponding to a given source.
+ * Params: srcfile = source filename.
+ * Returns: executable filename.
+ */
+string src2exe(Config cfg, string srcfile)
+{
+    // Note: there's a bug in setExtension when cfg.execExt is empty (e.g. on
+    // Posix): it appends a stray dot to the resulting filename. So we replace
+    // the extension manually here.
+    return stripExtension(srcfile) ~ cfg.execExt;
+}
+
+unittest
+{
+    auto cfg = new Config();
+    cfg.execExt = ".exe";
+    assert(cfg.src2exe("prog.d") == "prog.exe");
+}
+
+unittest
+{
+    auto cfg = new Config();
+    cfg.execExt = "";
+    assert(cfg.src2exe("subdir/prog.d") == "subdir/prog");
+}
+
+/**
+ * Searches $PATH to find the given program.
+ */
+string findBin(string program)
+{
+    auto binpaths = environment["PATH"];
+    foreach (path; binpaths.split(pathSeparator)) {
+        auto exe = buildNormalizedPath(path, program);
+        if (exists(exe)) {
+            return exe;
+        }
+    }
+    return "";
+}
+
+/**
  * Finds the path to this program.
  */
 string findScriptPath(string argv0)
+out(path) { assert(path.length != 0); }
+body
 {
-    // FIXME: this is not 100% reliable; we need equivalent functionality to
-    // Perl's FindBin.
-    return absolutePath(dirName(argv0));
+    return findBin(argv0);
 }
 
 /**
  * Finds GDC.
  */
 string findGDC()
+out(path) { assert(path.length != 0); }
+body
 {
-	auto binpaths = environment.get("PATH");
+    auto gdc = findBin("gdc");
+    if (gdc.length == 0)
+        throw new Exception("Unable to find gdc executable");
 
-	foreach (path; binpaths.split(pathSeparator))
-	{
-	   auto exe = path ~ dirSeparator ~ "gdc";
-	   if (exists (exe)) {
-	     return exe;
-	   }
-	}
-	
-	return "";
+    return gdc;
 }
 
 /**
@@ -169,9 +279,9 @@ string findDmdConf(Config cfg) {
     ];
 
     foreach (path; confPaths) {
-        auto confPath = buildPath(path, "dmd.conf");
+        auto confPath = buildPath(path, GdmdConfFile);
         if (exists(confPath)) {
-            cfg.dmdConfPath = confPath;
+            cfg.confPath = confPath;
             return confPath;
         }
     }
@@ -179,7 +289,8 @@ string findDmdConf(Config cfg) {
 }
 
 /**
- * Loads environment settings from dmd.conf and stores them in the environment.
+ * Loads environment settings from GdmdConfFile and stores them in the
+ * environment.
  */
 void readDmdConf(Config cfg) {
     auto dmdConf = findDmdConf(cfg);
@@ -213,8 +324,9 @@ void readDmdConf(Config cfg) {
                 string var = m.captures[1].idup;
                 string val = m.captures[2].idup;
 
-                // The special name %@P% is replaced with the path to dmd.conf
-                val = replace(val, regex(`%\@P%`, "g"), cfg.dmdConfPath);
+                // The special name %@P% is replaced with the path to
+                // GdmdConfFile
+                val = replace(val, regex(`%\@P%`, "g"), cfg.confPath);
 
                 // Names enclosed by %% are searched for in the existing
                 // environment and inserted.
@@ -271,6 +383,9 @@ Config init(string[] args)
     cfg.gdc = findGDC();
     cfg.linker = cfg.gdc;
 
+    debug writeln("[conf] scriptPath = ", cfg.scriptPath);
+    debug writeln("[conf] gdc = ", cfg.gdc);
+
     readDmdConf(cfg);
     getGdcSettings(cfg);
 
@@ -291,13 +406,15 @@ Config init(string[] args)
  * Parse command-line arguments and sets up the appropriate settings in the
  * Config object.
  */
-void parseArgs(Config cfg, string[] args)
+void parseArgs(Config cfg, string[] _args)
 {
+    auto args = _args;
     while (!args.empty) {
         auto arg = args.front;
 
         if (arg == "-arch") {
             args.popFront();
+            // TBD: bounds check
             cfg.gdcFlags ~= [ "-arch", args.front ];
         } else if (arg == "-c") {
             cfg.dontLink = true;
@@ -328,7 +445,7 @@ void parseArgs(Config cfg, string[] args)
             cfg.gdcFlags ~= (m.captures[1].length > 0) ?
                                 "-fdeps=" ~ m.captures[1] : "-fdeps";
         } else if (arg == "-g" || arg == "-gc") {
-            cfg.dbg = true;
+            cfg.debugMode = true;
             cfg.gdcFlags ~= "-g";
         } else if (arg == "-gs") {
             cfg.gdcFlags ~= "-fno-omit-frame-pointer";
@@ -344,7 +461,40 @@ void parseArgs(Config cfg, string[] args)
             // TBD
         } else if (arg == "--help") {
             printUsage();
-            throw new ExitException(0);
+            exit(0);
+        } else if (arg == "-framework") {
+            args.popFront();
+            // TBD: bounds check
+            cfg.linkFlags ~= [ "-framework", args.front ];
+        } else if (arg == "-ignore") {
+            cfg.gdcFlags ~= "-fignore-unknown-pragmas";
+        } else if (arg == "-property") {
+            cfg.gdcFlags ~= "-fproperty";
+        } else if (arg == "-inline") {
+            cfg.gdcFlags ~= "-finline-functions";
+        } else if (auto m=match(arg, `^-I(.*)$`)) {
+            cfg.gdcFlags ~= ["-I", expandTilde(m.captures[1])];
+        } else if (auto m=match(arg, `^-J(.*)$`)) {
+            cfg.gdcFlags ~= ["-J", expandTilde(m.captures[1])];
+        } else if (auto m=match(arg, `^-L(.*)$`)) {
+            cfg.linkFlags ~= "-Wl," ~ m.captures[1];
+        } else if (arg == "-lib") {
+            // TBD
+        } else if (arg == "-O") {
+            cfg.gdcFlags ~= ["-O3"];
+            // FIXME: this is rather ugly
+            if (!canFind(_args, "-inline"))
+                cfg.gdcFlags ~= ["-fno-inline-functions"];
+        } else if (arg == "-o-") {
+            cfg.gdcFlags ~= ["-fsyntax-only"];
+            cfg.dontLink = true;
+        } else if (auto m=match(arg, `^-od(.*)$`)) {
+            cfg.outputDir = m.captures[1];
+        } else if (auto m=match(arg, `^-of(.*)$`)) {
+            cfg.outputDir = dirName(m.captures[1]);
+            cfg.outputFile = m.captures[1];
+        } else if (arg == "-op") {
+            cfg.keepPath = true;
         } else if (match(arg, regex(`\.d$`, "i"))) {
             cfg.sources ~= arg;
         } else if (match(arg, regex(`\.ddoc$`, "i"))) {
@@ -366,12 +516,76 @@ void parseArgs(Config cfg, string[] args)
 void compile(Config cfg)
 {
     foreach (srcfile; cfg.sources) {
-        auto cmd = [ cfg.gdc ] ~ cfg.gdcFlags ~ [ "-c", srcfile ];
+        auto objfile = cfg.src2obj(srcfile);
+
+        // If target directory doesn't exist yet, create it.
+        auto objdir = dirName(objfile);
+        if (!exists(objdir)) {
+            debug writefln("[exec] mkdirRecurse(%s)", objdir);
+            mkdirRecurse(objdir);
+        }
+
+        // Invoke compiler
+        auto cmd = [ cfg.gdc ] ~ cfg.gdcFlags ~ [
+            "-c", srcfile, "-o", objfile
+        ];
         debug writeln("[exec] ", cmd.join(" "));
         auto rc = execute(cmd);
         if (rc.status != 0)
             throw new Exception("Compile of %s failed: %s"
                                 .format(srcfile, rc.output));
+    }
+}
+
+/**
+ * Determine output file given current configuration.
+ */
+string determineOutputFile(Config cfg)
+{
+    assert(cfg.sources.length >= 1);
+    return (cfg.outputFile.length > 0) ? cfg.outputFile
+                                       : cfg.src2exe(baseName(cfg.sources[0]));
+}
+
+unittest
+{
+    // If no explicit output file is given, use first .d file as basename.
+    auto cfg = new Config();
+    cfg.sources = ["test.d", "module.d"];
+    cfg.execExt = ".exe";
+    assert(cfg.determineOutputFile() == "test.exe");
+
+    // DMD appears to only use -od for object files, not the final executable.
+    // So outputDir shouldn't affect the results.
+    cfg.outputDir = "subdir";
+    assert(cfg.determineOutputFile() == "test.exe");
+
+    // If output filename is specified, we should be using that instead
+    cfg.outputFile = "prog.exe";
+    assert(cfg.determineOutputFile() == "prog.exe");
+
+    // That should still hold if outputDir wasn't specified
+    cfg.outputDir = "";
+    assert(cfg.determineOutputFile() == "prog.exe");
+}
+
+unittest
+{
+    // Sigh, dmd's path handling is very quirky.
+    {
+        auto cfg = new Config();
+        cfg.parseArgs(["-ofprog", "src/test.d"]);
+        assert(cfg.determineOutputFile() == "prog");
+    }
+    {
+        auto cfg = new Config();
+        cfg.parseArgs(["-odobjdir", "src/test.d"]);
+        assert(cfg.determineOutputFile() == "test");
+    }
+    {
+        auto cfg = new Config();
+        cfg.parseArgs(["-ofobjdir/prog", "src/test.d"]);
+        assert(cfg.determineOutputFile() == "objdir/prog");
     }
 }
 
@@ -383,16 +597,21 @@ void link(Config cfg)
     /*
      * Construct link command
      */
-    assert(cfg.sources.length >= 1);
-    auto outfile = baseName(cfg.sources[0], ".d") ~ cfg.execExt;
     auto cmd = [ cfg.linker ] ~ cfg.linkFlags;
 
+    // Collect all object files.
     foreach (srcfile; cfg.sources) {
-        auto objfile = baseName(srcfile, ".d") ~ cfg.objExt;
-        cmd ~= objfile;
+        cmd ~= cfg.src2obj(srcfile);
     }
 
-    cmd ~= [ "-o", outfile ];
+    // Create target directory if it doesn't exist yet.
+    auto exefile = cfg.determineOutputFile();
+    auto exedir = dirName(exefile);
+    if (!exists(exedir))
+        mkdirRecurse(exedir);
+
+    // Specify output file
+    cmd ~= [ "-o", exefile ];
 
     /*
      * Invoke linker
@@ -410,11 +629,11 @@ int main(string[] args)
 {
     try {
         auto cfg = init(args);
-        parseArgs(cfg, args);
+        parseArgs(cfg, args[1..$]);
 
         if (cfg.sources.length == 0) {
             printUsage();
-            return 0;
+            exit(0);
         }
 
         compile(cfg);
