@@ -513,7 +513,7 @@ void parseArgs(Config cfg, string[] _args)
 /**
  * Compiles the given source files.
  */
-void compile(Config cfg)
+void compile_only(Config cfg)
 {
     foreach (srcfile; cfg.sources) {
         auto objfile = cfg.src2obj(srcfile);
@@ -590,18 +590,18 @@ unittest
 }
 
 /**
- * Links the given sources files into the final executable.
+ * Compiles and links the given sources files into the final executable.
  */
-void link(Config cfg)
+void compile_and_link(Config cfg)
 {
-    /*
+	/*
      * Construct link command
      */
-    auto cmd = [ cfg.linker ] ~ cfg.linkFlags;
+    auto cmd = [ cfg.linker ] ~ cfg.gdcFlags ~ cfg.linkFlags;
 
-    // Collect all object files.
+    // Collect all source files.
     foreach (srcfile; cfg.sources) {
-        cmd ~= cfg.src2obj(srcfile);
+        cmd ~= srcfile;
     }
 
     // Create target directory if it doesn't exist yet.
@@ -619,7 +619,7 @@ void link(Config cfg)
     debug writeln("[exec] ", cmd.join(" "));
     auto rc = execute(cmd);
     if (rc.status != 0)
-        throw new Exception("Link failed: %s".format(rc.output));
+        throw new Exception("Compile and link failed: %s".format(rc.output));
 }
 
 /**
@@ -636,10 +636,12 @@ int main(string[] args)
             exit(0);
         }
 
-        compile(cfg);
-
-        if (!cfg.dontLink)
-            link(cfg);
+	if (cfg.dontLink) {
+		compile_only(cfg);
+	}
+	else {
+		compile_and_link(cfg);
+	}
 
         return 0;
     } catch(ExitException e) {
