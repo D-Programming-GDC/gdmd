@@ -513,7 +513,7 @@ void parseArgs(Config cfg, string[] _args)
 /**
  * Compiles the given source files.
  */
-void compile_only(Config cfg)
+void compileOnly(Config cfg)
 {
     foreach (srcfile; cfg.sources) {
         auto objfile = cfg.src2obj(srcfile);
@@ -592,7 +592,7 @@ unittest
 /**
  * Compiles and links the given sources files into the final executable.
  */
-void compile_and_link(Config cfg)
+void compileAndLink(Config cfg)
 {
 	/*
      * Construct link command
@@ -637,10 +637,10 @@ int main(string[] args)
         }
 
 	if (cfg.dontLink) {
-		compile_only(cfg);
+		compileOnly(cfg);
 	}
 	else {
-		compile_and_link(cfg);
+		compileAndLink(cfg);
 	}
 
         return 0;
