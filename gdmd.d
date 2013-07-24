@@ -502,6 +502,7 @@ void parseArgs(Config cfg, string[] _args)
         } else if (match(arg, regex(`\.d$`, "i"))) {
             cfg.sources ~= arg;
         } else if (match(arg, regex(`\.ddoc$`, "i"))) {
+            // TBD: this doesn't actually do anything yet.
             cfg.ddocs ~= arg;
         } else {
             // TBD: append to list of obj files
