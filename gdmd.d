@@ -421,11 +421,13 @@ void parseArgs(Config cfg, string[] _args)
         } else if (arg == "-cov") {
             cfg.gdcFlags ~= [ "-fprofile-arcs", "-ftest-coverage" ];
         } else if (arg == "-D") {
-            // TBD
+			cfg.gdcFlags ~= "-fdoc";
         } else if (auto m = match(arg, `-Dd(.*)$`)) {
-            // TBD
+			cfg.gdcFlags ~= "-fdoc";
+			cfg.gdcFlags ~= "-fdoc-dir=" ~ m.captures[1];
         } else if (auto m = match(arg, `-Df(.*)$`)) {
-            // TBD
+			cfg.gdcFlags ~= "-fdoc";
+			cfg.gdcFlags ~= "-fdoc-file=" ~ m.captures[1];
         } else if (arg == "-d") {
             cfg.gdcFlags ~= "-Wno-deprecated";
         } else if (arg == "-de") {
