@@ -454,7 +454,7 @@ void parseArgs(Config cfg, string[] _args)
         } else if (arg == "-gx") {
             cfg.gdcFlags ~= "-fstack-protector";
         } else if (arg == "-H") {
-            // TBD
+            cfg.gdcFlags ~= "-fintfc";
         } else if (auto m=match(arg, regex(`-Hd(.*)$`))) {
             // TBD
         } else if (auto m=match(arg, regex(`-Hf(.*)$`))) {
