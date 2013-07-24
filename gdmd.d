@@ -456,9 +456,11 @@ void parseArgs(Config cfg, string[] _args)
         } else if (arg == "-H") {
             cfg.gdcFlags ~= "-fintfc";
         } else if (auto m=match(arg, regex(`-Hd(.*)$`))) {
-            // TBD
+			cfg.gdcFlags ~= "-fintfc";
+            cfg.gdcFlags ~= "-fintfc-dir=" ~ m.captures[1];
         } else if (auto m=match(arg, regex(`-Hf(.*)$`))) {
-            // TBD
+			cfg.gdcFlags ~= "-fintfc";
+            cfg.gdcFlags ~= "-fintfc-file=" ~ m.captures[1];
         } else if (arg == "--help") {
             printUsage();
             exit(0);
