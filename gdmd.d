@@ -421,11 +421,13 @@ void parseArgs(Config cfg, string[] _args)
         } else if (arg == "-cov") {
             cfg.gdcFlags ~= [ "-fprofile-arcs", "-ftest-coverage" ];
         } else if (arg == "-D") {
-            // TBD
+            cfg.gdcFlags ~= "-fdoc";
         } else if (auto m = match(arg, `-Dd(.*)$`)) {
-            // TBD
+            cfg.gdcFlags ~= "-fdoc";
+            cfg.gdcFlags ~= "-fdoc-dir=" ~ m.captures[1];
         } else if (auto m = match(arg, `-Df(.*)$`)) {
-            // TBD
+            cfg.gdcFlags ~= "-fdoc";
+            cfg.gdcFlags ~= "-fdoc-file=" ~ m.captures[1];
         } else if (arg == "-d") {
             cfg.gdcFlags ~= "-Wno-deprecated";
         } else if (arg == "-de") {
@@ -454,11 +456,13 @@ void parseArgs(Config cfg, string[] _args)
         } else if (arg == "-gx") {
             cfg.gdcFlags ~= "-fstack-protector";
         } else if (arg == "-H") {
-            // TBD
+            cfg.gdcFlags ~= "-fintfc";
         } else if (auto m=match(arg, regex(`-Hd(.*)$`))) {
-            // TBD
+            cfg.gdcFlags ~= "-fintfc";
+            cfg.gdcFlags ~= "-fintfc-dir=" ~ m.captures[1];
         } else if (auto m=match(arg, regex(`-Hf(.*)$`))) {
-            // TBD
+            cfg.gdcFlags ~= "-fintfc";
+            cfg.gdcFlags ~= "-fintfc-file=" ~ m.captures[1];
         } else if (arg == "--help") {
             printUsage();
             exit(0);
