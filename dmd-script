@@ -484,7 +484,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         close(RSP);
 
         while (length $rsp) {
-            if ($rsp =~ m/^"(([^\\"]|\\")*(\\\\)*)"\s*/ ) {
+            if ($rsp =~ m/^"(([^\\"]|\\.)*(\\\\)*)"\s*/ ) {
                 $arg = $1;
                 $rsp = $';
                 $arg =~ s/\\"/"/g;
