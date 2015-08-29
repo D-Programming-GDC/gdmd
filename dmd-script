@@ -385,10 +385,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         $link = 0;
         $tmpdir = tempdir(CLEANUP => 1);
     } elsif ( $arg =~ m/^-O$/ ) {
-        push @out, '-O3';
-        if( ! grep(/^-inline$/,@ARGV) ) {
-            push @out, '-fno-inline-functions';
-        }
+        push @out, '-O2';
     } elsif ( $arg =~ m/^-o-$/ ) {
         push @out, '-fsyntax-only';
         $link = 0;
