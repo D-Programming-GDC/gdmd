@@ -1,0 +1,10 @@
+language: d
+d:
+  - gdc
+
+script:
+  - dub test
+  - dub build
+  - dub run gdmd:test
+
+sudo: false
