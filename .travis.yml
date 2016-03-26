@@ -3,8 +3,8 @@ d:
   - gdc
 
 script:
-  - dub test
-  - dub build
+  - dub test --config=gdc4.9
+  - dub build  --config=gdc4.9
   - dub run gdmd:test
 
 sudo: false
