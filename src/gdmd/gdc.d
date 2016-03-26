@@ -30,7 +30,7 @@ private @property string environmentVariable(string fileName)
     if (fileName.extension == ".exe")
         fileName = fileName.stripExtension;
 
-    return fileName.toUpper().replace("-", "_");
+    return fileName.toUpper().replace("-", "_").replace(".", "");
 }
 
 unittest
@@ -66,7 +66,7 @@ private @property string environmentVariableAR(string fileName)
     if (fileName.extension == ".exe")
         fileName = fileName.stripExtension;
 
-    return fileName.toUpper().replace("-", "_");
+    return fileName.toUpper().replace("-", "_".replace(".", ""));
 }
 
 unittest
