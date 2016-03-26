@@ -4,9 +4,25 @@
     "copyright": "Copyright © 2016, GDC development team",
     "authors": ["GDC development team"],
     "targetType": "executable",
-    "versions": ["GCC_49_Plus"],
-    "dependencies": {
-    },
+    "license": "BSL-1.0",
+    "configurations": [
+        {
+            "name": "gdc4.8",
+            "versions": [],
+        },
+        {
+            "name": "gdc4.9",
+            "versions": ["GCC_49_Plus"],
+        },
+        {
+            "name": "gdc5",
+            "versions": ["GCC_49_Plus"],
+        },
+        {
+            "name": "gdc6",
+            "versions": ["GCC_49_Plus"],
+        }
+    ],
     "subPackages": [
         {
             "name": "test",
