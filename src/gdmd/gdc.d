@@ -37,16 +37,16 @@ unittest
 {
     assert(environmentVariable("gdmd") == "GDC");
     assert(environmentVariable("gdmd.exe") == "GDC");
-    assert(environmentVariable("gdmd-4.9") == "GDC_4.9");
-    assert(environmentVariable("gdmd-4.9.exe") == "GDC_4.9");
+    assert(environmentVariable("gdmd-4.9") == "GDC_49");
+    assert(environmentVariable("gdmd-4.9.exe") == "GDC_49");
     assert(environmentVariable("arm-linux-gnueabi-gdmd") == "ARM_LINUX_GNUEABI_GDC");
     assert(environmentVariable("arm-linux-gnueabi-gdmd.exe") == "ARM_LINUX_GNUEABI_GDC");
-    assert(environmentVariable("arm-linux-gnueabi-gdmd-4.9") == "ARM_LINUX_GNUEABI_GDC_4.9");
-    assert(environmentVariable("arm-linux-gnueabi-gdmd-4.9.exe") == "ARM_LINUX_GNUEABI_GDC_4.9");
+    assert(environmentVariable("arm-linux-gnueabi-gdmd-4.9") == "ARM_LINUX_GNUEABI_GDC_49");
+    assert(environmentVariable("arm-linux-gnueabi-gdmd-4.9.exe") == "ARM_LINUX_GNUEABI_GDC_49");
     assert(
-        environmentVariable("gdmd-arm-linux-gnueabi-gdmd-4.9") == "GDMD_ARM_LINUX_GNUEABI_GDC_4.9");
+        environmentVariable("gdmd-arm-linux-gnueabi-gdmd-4.9") == "GDMD_ARM_LINUX_GNUEABI_GDC_49");
     assert(
-        environmentVariable("gdmd-arm-linux-gnueabi-gdmd-4.9.exe") == "GDMD_ARM_LINUX_GNUEABI_GDC_4.9");
+        environmentVariable("gdmd-arm-linux-gnueabi-gdmd-4.9.exe") == "GDMD_ARM_LINUX_GNUEABI_GDC_49");
 }
 
 /**
