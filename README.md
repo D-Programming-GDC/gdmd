@@ -17,7 +17,7 @@ dub build --build=release --config=gdc6
 ```
 
 ### Installing GDMD
-GDMD is expected to be shipped by packagers in addition to the `gdc` executable. If GDMD is installed correctly, it will automatically find the `gdc` and `ar` executables. To make this auto detection work, install the `gdmd` executable into the same folder as the `gdc` executable. Rename `gdmd` to make sure it has got the same prefix and postfix as the `gdc` executable. The following tables gives some examples of the names used for searching the `gdc` and `ar` executables depending on the `gdmd` executable name.
+GDMD is expected to be shipped by packagers in parallel to the `gdc` executable. If GDMD is installed correctly it will automatically find the `gdc` and `ar` executables. To make this auto detection work install the `gdmd` executable into the same folder as the `gdc` executable. Rename `gdmd` to make sure it has got the same prefix and postfix as the `gdc` executable. The following tables gives some examples of the names used for searching the `gdc` and `ar` executables depending on the `gdmd` executable name.
 
 | GDMD                       | GDC                       | AR                   |
 | ---------------------------|:-------------------------:|:--------------------:|
