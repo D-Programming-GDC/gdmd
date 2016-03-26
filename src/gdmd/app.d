@@ -65,6 +65,13 @@ private:
         {
             auto idx = gdcPath.lastIndexOf("gdc", std.string.CaseSensitive.no);
             arPath = gdcPath[0 .. idx] ~ "ar";
+            // If gdc was found in PATH, search for AR in different PATH directories as well
+            if (!arPath.exists() && !args.gdcOption.empty
+                    && args.gdcOption.baseName() == args.gdcOption)
+            {
+                idx = args.gdcOption.lastIndexOf("gdc", std.string.CaseSensitive.no);
+                arPath = searchAR(args.gdcOption[0 .. idx] ~ "ar");
+            }
         }
     }
 
