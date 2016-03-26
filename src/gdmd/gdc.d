@@ -43,8 +43,7 @@ unittest
     assert(environmentVariable("arm-linux-gnueabi-gdmd.exe") == "ARM_LINUX_GNUEABI_GDC");
     assert(environmentVariable("arm-linux-gnueabi-gdmd-4.9") == "ARM_LINUX_GNUEABI_GDC_49");
     assert(environmentVariable("arm-linux-gnueabi-gdmd-4.9.exe") == "ARM_LINUX_GNUEABI_GDC_49");
-    assert(
-        environmentVariable("gdmd-arm-linux-gnueabi-gdmd-4.9") == "GDMD_ARM_LINUX_GNUEABI_GDC_49");
+    assert(environmentVariable("gdmd-arm-linux-gnueabi-gdmd-4.9") == "GDMD_ARM_LINUX_GNUEABI_GDC_49");
     assert(
         environmentVariable("gdmd-arm-linux-gnueabi-gdmd-4.9.exe") == "GDMD_ARM_LINUX_GNUEABI_GDC_49");
 }

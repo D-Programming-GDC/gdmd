@@ -176,11 +176,6 @@ private struct ArgsParser
         {
             return handleDMDArgument(arg);
         }
-        else if (arg.startsWith("@"))
-        {
-            _options = parseResponse(arg) ~ _options;
-            return false;
-        }
         else
         {
             if (arg.extension == ".ddoc")
@@ -570,6 +565,7 @@ alias HelpTuple = Tuple!(bool, "help", Arguments, "args");
  */
 HelpTuple parseCommandLine(string[] options, Arguments merge = Arguments.init)
 {
+    options = parseResponse(options);
     auto parser = ArgsParser(merge, options);
     auto help = parser.parse();
     return HelpTuple(help, parser._args);
