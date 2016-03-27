@@ -5,7 +5,7 @@ module gdmd.app;
 
 import std.array, std.conv, std.exception, std.file, std.path, std.process,
     std.string, std.stdio;
-import gdmd.args, gdmd.gdc, gdmd.exception;
+import gdmd.args, gdmd.gdc, gdmd.exception, gdmd.response, gdmd.util;
 
 struct GDMD
 {
@@ -95,11 +95,8 @@ private:
                 tempSource.remove();
         }
 
-        if (args.debugCommands)
-            writefln("[exec]  %s -fsyntax-only %s", gdcPath, tempSource);
-        auto result = execute([gdcPath, "-fsyntax-only", tempSource]);
-        if (args.debugCommands)
-            writefln("[exec] Result: %s", result);
+        auto result = executeResponse([gdcPath, "-fsyntax-only", tempSource],
+            args.debugCommands, true);
 
         enforce(result.status == 0, "Couldn't call gdc compiler to inquire some information!");
         return result.output;
@@ -125,12 +122,7 @@ private:
      */
     string getGDCInfo(string arg)
     {
-        if (args.debugCommands)
-            writefln("[exec] %s %s", gdcPath, arg);
-        auto result = execute([gdcPath, arg]);
-
-        if (args.debugCommands)
-            writefln("[exec] Result: %s", result);
+        auto result = executeResponse([gdcPath, arg], args.debugCommands, true);
         enforce(result.status == 0, "Couldn't call gdc compiler to inquire some information!");
         return result.output;
     }
@@ -345,9 +337,7 @@ private:
 
         // Invoke compiler
         auto cmd = [gdcPath] ~ args.gdcFlags ~ ["-c"] ~ srcfiles ~ ["-o", objfile];
-        if (args.debugCommands)
-            writeln("[exec] ", cmd.join(" "));
-        auto rc = execute(cmd);
+        auto rc = executeResponse(cmd, args.debugCommands);
         write(rc.output);
         enforceAbort(rc.status == 0, "Compile of %s failed".format(srcfiles));
     }
@@ -391,10 +381,7 @@ private:
         }
         cmd ~= ["-o", exeFile];
 
-        // Invoke linker
-        if (args.debugCommands)
-            writeln("[exec] ", cmd.join(" "));
-        auto rc = execute(cmd);
+        auto rc = executeResponse(cmd, args.debugCommands);
         write(rc.output);
         enforceAbort(rc.status == 0, "Compile and link failed");
     }
@@ -415,10 +402,7 @@ private:
 
         compileLink(tempOutput);
         auto cmd = [tempOutput] ~ args.runArguments;
-        if (args.debugCommands)
-            writeln("[exec] ", cmd.join(" "));
-        auto pid = spawnProcess(cmd);
-        return wait(pid);
+        return spawnWaitResponse(cmd, args.debugCommands);
     }
 
     /**
@@ -441,9 +425,7 @@ private:
 
         compileOneObject(tempOutput, args.sources);
         auto cmd = [arPath, "rcs", determineOutputLib(), tempOutput];
-        if (args.debugCommands)
-            writeln("[exec] ", cmd.join(" "));
-        auto rc = execute(cmd);
+        auto rc = executeResponse(cmd, args.debugCommands);
         write(rc.output);
         enforceAbort(rc.status == 0, "Creating library failed");
     }
@@ -518,17 +500,4 @@ public:
         }
         return 0;
     }
-}
-
-/**
- * Return a range of num random letters.
- */
-auto randomLetters(size_t num)
-{
-    import std.range : iota;
-    import std.random : uniform;
-    import std.ascii : letters;
-    import std.algorithm : map;
-
-    return iota(num).map!(a => letters[uniform(0, $)]);
 }

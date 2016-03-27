@@ -4,6 +4,7 @@
 module gdmd.response;
 
 import std.array, std.file, std.process, std.string;
+import gdmd.util;
 
 /**
  * Expand all response files in args recursively.
@@ -299,4 +300,72 @@ unittest
     assert(`\\\" `.parseEscapeSequence(idx) == `\"` && idx == 3);
     idx = 0;
     assert(`\\\\" `.parseEscapeSequence(idx) == `\\"` && idx == 4);
+}
+
+/**
+ * Maximum length of cmd string (excluding os specific escaping)
+ */
+enum maxCMDLength = 1024;
+
+/**
+ * Exexute a process, use response files if necessary
+ */
+auto executeResponse(string[] args, bool debugCommands, bool printResult = false)
+{
+    return doResponse(args, debugCommands, printResult, cmd => execute(cmd));
+}
+
+/**
+ * Spawn a process and directly wait for it to finish, use response files if necessary
+ */
+auto spawnWaitResponse(string[] args, bool debugCommands, bool printResult = false)
+{
+    return doResponse(args, debugCommands, printResult, (string[] cmd) {
+        auto pid = spawnProcess(cmd);
+        return wait(pid);
+    });
+}
+
+/**
+ * Helper function. Prepare response file and do logging, then
+ * call cb and return its return value.
+ */
+private T doResponse(T)(string[] args, bool debugCommands, bool printResult,
+    T delegate(string[] args) cb)
+{
+    import std.algorithm, std.file, std.path, std.range, std.stdio, std.utf;
+
+    string respFile;
+    scope (exit)
+    {
+        if (!respFile.empty && respFile.exists())
+            respFile.remove();
+    }
+
+    if (args.joiner(" ").byCodeUnit.walkLength > maxCMDLength)
+    {
+        respFile = tempDir().buildPath("gdc_%s.response".format(randomLetters(10)));
+        if (debugCommands)
+            writefln("[exec] Writing response file to %s", respFile);
+
+        auto rfile = File(respFile, "w");
+        foreach (i, arg; args[1 .. $])
+        {
+            if (i != 0)
+                rfile.write("\n");
+            // GCC format
+            rfile.writef(`"%s"`, arg.replace(`\`, `\\`).replace(`"`, `\"`).replace(`'`,
+                `\'"`));
+        }
+        rfile.close();
+
+        args = [args[0], "@" ~ respFile];
+    }
+
+    if (debugCommands)
+        writefln("[exec]  %s", args.joiner(" "));
+    auto result = cb(args);
+    if (debugCommands && printResult)
+        writefln("[exec] Result: %s", result);
+    return result;
 }
