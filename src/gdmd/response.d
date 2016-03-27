@@ -195,7 +195,7 @@ unittest
 // Adapted from phobos, std.process
 unittest
 {
-    string[] parseCommandLine(string line)
+    string[] parseCommandLineTest(string line)
     {
         return ArgumentSplitter(line).array();
     }
@@ -219,7 +219,7 @@ unittest
         import std.process, std.conv;
 
         auto q = escapeWindowsArgument(s);
-        auto args = parseCommandLine("Dummy.exe " ~ q);
+        auto args = parseCommandLineTest("Dummy.exe " ~ q);
         assert(args.length == 2, s ~ " => " ~ q ~ " #" ~ text(args.length - 1));
         assert(args[1] == s, s ~ " => " ~ q ~ " => " ~ args[1]);
     }
