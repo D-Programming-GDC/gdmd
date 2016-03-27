@@ -79,14 +79,19 @@ private:
         else
         {
             auto idx = gdcPath.lastIndexOf("gdc", std.string.CaseSensitive.no);
-            arPath = gdcPath[0 .. idx] ~ "gcc-ar";
+            arPath = gdcPath[0 .. idx] ~ "ar";
             arPath = arPath.setExeExtension();
             // If gdc was found in PATH, search for AR in different PATH directories as well
             if (!arPath.exists() && !args.gdcOption.empty
                     && args.gdcOption.baseName() == args.gdcOption)
             {
                 idx = args.gdcOption.lastIndexOf("gdc", std.string.CaseSensitive.no);
-                arPath = searchAR((args.gdcOption[0 .. idx] ~ "gcc-ar").setExeExtension());
+                // Report error later on
+                try
+                    arPath = searchAR((args.gdcOption[0 .. idx] ~ "ar").setExeExtension());
+                catch (AbortException)
+                {
+                }
             }
         }
     }
