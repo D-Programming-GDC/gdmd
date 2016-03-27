@@ -161,7 +161,7 @@ string searchGDC(string entry)
 /// ditto
 string searchAR(string entry)
 {
-    return searchProgram(entry, "ar");
+    return searchProgram(entry, "gcc-ar");
 }
 
 unittest

@@ -223,10 +223,6 @@ unittest
         assert(args.length == 2, s ~ " => " ~ q ~ " #" ~ text(args.length - 1));
         assert(args[1] == s, s ~ " => " ~ q ~ " => " ~ args[1]);
     }
-
-    import std.stdio;
-
-    writeln(ArgumentSplitter(`"C:\abc\\"def" foo`));
 }
 
 /**
