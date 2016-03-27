@@ -7,6 +7,21 @@ import std.array, std.conv, std.exception, std.file, std.path, std.process,
     std.string, std.stdio;
 import gdmd.args, gdmd.gdc, gdmd.exception, gdmd.response, gdmd.util;
 
+string setExeExtension(string program)
+{
+    version (Windows)
+    {
+        if (program.endsWith(".exe"))
+            return program;
+        else
+            return program ~ ".exe";
+    }
+    else
+    {
+        return program;
+    }
+}
+
 struct GDMD
 {
 private:
@@ -38,11 +53,11 @@ private:
 
         // Check first if we have some sort of user supplied GDC path
         if (!args.gdcOption.empty)
-            gdcPath = searchGDC(args.gdcOption);
+            gdcPath = searchGDC(args.gdcOption.setExeExtension());
         else if (auto entry = environment.get(environmentVariable))
-            gdcPath = searchGDC(entry);
+            gdcPath = searchGDC(entry.setExeExtension());
         else if (auto entry = environment.get("GDMD_GDC"))
-            gdcPath = searchGDC(entry);
+            gdcPath = searchGDC(entry.setExeExtension());
         else
             gdcPath = autodetectGDC();
     }
@@ -56,23 +71,22 @@ private:
 
         // Check first if we have some sort of user supplied AR path
         if (!args.arOption.empty)
-            arPath = searchAR(args.arOption);
+            arPath = searchAR(args.arOption.setExeExtension());
         else if (auto entry = environment.get(environmentVariableAR))
-            arPath = searchAR(entry);
+            arPath = searchAR(entry.setExeExtension());
         else if (auto entry = environment.get("GDMD_AR"))
-            arPath = searchAR(entry);
+            arPath = searchAR(entry.setExeExtension());
         else
         {
-            auto ext = extension(gdcPath);
             auto idx = gdcPath.lastIndexOf("gdc", std.string.CaseSensitive.no);
             arPath = gdcPath[0 .. idx] ~ "gcc-ar";
-            arPath = arPath.setExtension(ext);
+            arPath = arPath.setExeExtension();
             // If gdc was found in PATH, search for AR in different PATH directories as well
             if (!arPath.exists() && !args.gdcOption.empty
                     && args.gdcOption.baseName() == args.gdcOption)
             {
                 idx = args.gdcOption.lastIndexOf("gdc", std.string.CaseSensitive.no);
-                arPath = searchAR((args.gdcOption[0 .. idx] ~ "gcc-ar").setExtension(ext));
+                arPath = searchAR((args.gdcOption[0 .. idx] ~ "gcc-ar").setExeExtension());
             }
         }
     }
