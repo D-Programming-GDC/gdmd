@@ -1,9 +1,17 @@
 /**
- * Handles response file parsing.
+ * Handles response file parsing and response file generation.
+ *
+ * Note that GCC uses a simpler response file format (no windows
+ * escaping), arguments always separated by newlines.
+ *
+ * The response file parsing is not 100% compatible with
+ * DMD as it only implements 'sane' use cases. For example the parser
+ * does not handle embedded \0 characters, comments, newlines in quoted
+ * strings and some more corner cases.
  */
 module gdmd.response;
 
-import std.array, std.file, std.process, std.string;
+import std.array, std.file, std.process, std.string, std.uni;
 import gdmd.util;
 
 /**
@@ -25,6 +33,27 @@ string[] parseResponse(string[] args)
     return result;
 }
 
+unittest
+{
+    import std.process;
+
+    environment["RESP1"] = `@RESP2 foo "@bar" @RESP3` ~ "\n" ~ `@RESP2 foo "@bar" @`;
+    environment["RESP2"] = `resp2 resp2`;
+    environment["RESP3"] = `"res\"p3" resp3`;
+
+    auto result = parseResponse([`@RESP1`]);
+    assert(result[0] == `resp2`);
+    assert(result[1] == `resp2`);
+    assert(result[2] == `foo`);
+    assert(result[3] == `@bar`);
+    assert(result[4] == `res"p3`);
+    assert(result[5] == `resp3`);
+    assert(result[6] == `resp2`);
+    assert(result[7] == `resp2`);
+    assert(result[8] == `foo`);
+    assert(result[9] == `@bar`);
+}
+
 /**
  * Expand a single response file. The leading @ must be removed
  * before calling this function.
@@ -33,176 +62,113 @@ string[] parseResponse(string name)
 {
     string[] result;
 
+    if (name.empty)
+        return result;
     // First look in evironment
     string content = environment.get(name);
     // Then try to read a file
     if (content is null)
         content = readText(name);
 
-    foreach (entry; ArgumentSplitter(content))
+    foreach (line; content.lineSplitter())
     {
-        if (entry.startsWith("@"))
-            result ~= parseResponse(entry[1 .. $]);
-        else
-            result ~= entry;
+        result ~= unescapeLine(line);
     }
 
     return result;
 }
 
 /**
- * Return true if char is used to split arguments.
+ * Reverse the windows argument escaping
  */
-@property bool isSplitChar(char c)
+string[] unescapeLine(string line)
 {
-    switch (c)
+    static bool isEscapedQuote(const(char)[] str)
     {
-    case '\r':
-    case '\n':
-    case '\0':
-    case ' ':
-    case '\t':
-        return true;
-    default:
+        foreach (c; str)
+        {
+            if (c == '"')
+                return true;
+            else if (c != '\\')
+                return false;
+        }
         return false;
     }
-}
 
-/**
- * Step 1: Split text string into separate arguments
- */
-private struct ArgumentSplitter
-{
-private:
-    string _content;
-    size_t _index = 0;
-
-public:
-    string front;
-
-    this(string content)
+    bool inQuoteString = false;
+    string buffer;
+    string[] result;
+    for (size_t i = 0; i < line.length; i++)
     {
-        _content = content;
-        popFront();
-    }
+        char c = line[i];
 
-    @property bool empty()
-    {
-        return front.empty;
-    }
-
-    void popFront()
-    {
-        front = "";
-
-        bool inString = false; // in "..."
-        size_t start = size_t.max;
-        for (; _index < _content.length; _index++)
+        // Recursive response file expansion
+        if (c == '@' && !inQuoteString)
         {
-            switch (_content[_index])
+            // Need at least one more character
+            if (i + 1 < line.length)
             {
-            case 0x1a:
-                //EOF
-                _index = _content.length;
-                return;
-            case '#':
-                // Allow # in arguments
-                if (!front.empty)
+                size_t j = i;
+                for (; j < line.length && !line[j].isWhite; j++)
                 {
-                    front ~= _content[_index];
                 }
-                else
-                {
-                    for (; _index < _content.length; _index++)
-                    {
-                        if (_content[_index] == '\r' || _content[_index] == '\n')
-                            break;
-                    }
-                }
-                break;
-            case '\\':
-                bool needSplit;
-                front ~= _content.parseEscapeSequence(_index, needSplit);
-                if (needSplit)
-                {
-                    _index++;
-                    return;
-                }
-                break;
-            case '"':
-                inString = !inString;
-                break;
-            default:
-                if (_content[_index].isSplitChar())
-                {
-                    if (!front.empty && (!inString || _content[_index] == '\0'
-                            || _content[_index] == '\n'))
-                        return;
-                    else if (inString)
-                        front ~= _content[_index];
-                }
-                else
-                    front ~= _content[_index];
+                result ~= parseResponse(line[i + 1 .. j]);
+                i = j;
             }
         }
+        else if (c == '"')
+        {
+            if (inQuoteString)
+            {
+                result ~= buffer;
+                buffer = "";
+            }
+            inQuoteString = !inQuoteString;
+
+        }
+        else if (c == '\\' && isEscapedQuote(line[i .. $]))
+        {
+            size_t numSlash = 0;
+            while (line[i] != '"')
+            {
+                if (++numSlash == 2)
+                {
+                    numSlash = 0;
+                    buffer ~= '\\';
+                }
+                i++;
+            }
+            // line[i] is now '"'
+            // For \\" only produce one backslash, quote is not escaped
+            if (numSlash == 0)
+                i--;
+            else
+                buffer ~= '"';
+        }
+        else if (c.isWhite() && !inQuoteString)
+        {
+            if (!buffer.empty)
+                result ~= buffer;
+            buffer = "";
+        }
+        else
+        {
+            buffer ~= c;
+        }
     }
-}
 
-unittest
-{
-    // Whitespace handling
-    assert(ArgumentSplitter("").array() == []);
-    assert(ArgumentSplitter(" \t \r\n \r \0").array() == []);
-    assert(ArgumentSplitter("foo").array() == ["foo"]);
-    assert(ArgumentSplitter("foo \t \0\0 bar\r\n\nbaz\nboo\r\rab\r")
-        .array() == ["foo", "bar", "baz", "boo", "ab"]);
-    assert(ArgumentSplitter(`"foo bar"`).array() == ["foo bar"]);
+    if (!buffer.empty && !inQuoteString)
+        result ~= buffer;
 
-    char endChar = 0x1a;
-    assert(ArgumentSplitter(`"foo ` ~ endChar ~ `bar"`).array() == ["foo "]);
-    assert(ArgumentSplitter("foo " ~ endChar ~ "bar").array() == ["foo"]);
-    assert(ArgumentSplitter(" \t" ~ endChar).array() == []);
-
-    // Comment handling
-    assert(ArgumentSplitter(" \t#abc abc # \" \\ \\\" \0 \t foo1\r\nfoo").array() == ["foo"]);
-    assert(ArgumentSplitter(" \t#comment\rabc def\r\nfoo").array() == ["abc", "def",
-        "foo"]);
-    assert(ArgumentSplitter("#comment\nabc").array() == ["abc"]);
-    assert(ArgumentSplitter("#comment\r\nabc").array() == ["abc"]);
-    assert(ArgumentSplitter("foo#nocomment").array() == ["foo#nocomment"]);
-    assert(ArgumentSplitter("\"foo\"#nocomment").array() == ["foo#nocomment"]);
-    assert(ArgumentSplitter("foo #comment").array() == ["foo"]);
-    assert(ArgumentSplitter("\"foo\" #comment").array() == ["foo"]);
-
-    // String handling
-    assert(ArgumentSplitter(`\"abc\ def foo`).array() == [`"abc\`, "def", "foo"]);
-    assert(ArgumentSplitter(`"abc\ def" foo`).array() == [`abc\ def`, "foo"]);
-    assert(ArgumentSplitter(`"abc\" def" foo`).array() == [`abc" def`, "foo"]);
-    assert(ArgumentSplitter(`"abc\\\" def" foo`).array() == [`abc\" def`, "foo"]);
-    assert(ArgumentSplitter(`"abc def\\" foo`).array() == [`abc def\`, `foo`]);
-    assert(ArgumentSplitter(`"abc def\\"" foo`).array() == [`abc def\"`, "foo"]);
-    assert(ArgumentSplitter("\" def\n \"foo").array() == [" def", "foo"]);
-    assert(ArgumentSplitter("\" def\0 \"foo").array() == [" def", "foo"]);
-
-    assert(ArgumentSplitter(`"C:\abc\" def" foo`).array() == [`C:\abc" def`, `foo`]);
-    assert(ArgumentSplitter(`"C:\abc\\" def" foo`).array() == [`C:\abc\`, `def foo`]);
-    assert(ArgumentSplitter(`"C:\abc\\\" def" foo`).array() == [`C:\abc\" def`, `foo`]);
-    assert(ArgumentSplitter(`"C:\abc\\\\" def" foo`).array() == [`C:\abc\\`, `def foo`]);
-    assert(ArgumentSplitter(`"C:\abc\\\\\" def" foo`).array() == [`C:\abc\\" def`,
-        `foo`]);
+    return result;
 }
 
 // Adapted from phobos, std.process
 unittest
 {
-    string[] parseCommandLineTest(string line)
-    {
-        return ArgumentSplitter(line).array();
-    }
-
-    string[] testStrings = [`Hello`, `Hello, world`, `Hello, "world"`, `C:\`, `C:\dmd`,
-        // `C:\Program Files\`,
-        ];
+    string[] testStrings = [
+        `Hello`, `Hello, world`, `Hello, "world"`, `C:\`, `C:\dmd`, `C:\Program Files\`,
+    ];
 
     enum CHARS = `_x\" *&^` ~ "\t"; // _ is placeholder for nothing
     foreach (c1; CHARS)
@@ -211,90 +177,20 @@ unittest
                 foreach (c4; CHARS)
                     testStrings ~= [c1, c2, c3, c4].replace("_", "");
 
+    import std.process;
+
     foreach (s; testStrings)
     {
-        // FIXME: We do not support parsing empty strings, but we don't need it either
-        if (s.empty)
-            continue;
-        import std.process, std.conv;
-
         auto q = escapeWindowsArgument(s);
-        auto args = parseCommandLineTest("Dummy.exe " ~ q);
-        assert(args.length == 2, s ~ " => " ~ q ~ " #" ~ text(args.length - 1));
-        assert(args[1] == s, s ~ " => " ~ q ~ " => " ~ args[1]);
-    }
-}
-
-/**
- * Parse a backslash / quotation mark sequence as described on
- * https://msdn.microsoft.com/en-us/library/windows/desktop/bb776391%28v=vs.85%29.aspx
- *
- * 2n backslashes followed by a quotation mark produce n backslashes followed by a quotation mark.
- * (2n) + 1 backslashes followed by a quotation mark again produce n backslashes followed by a quotation mark.
- * n backslashes not followed by a quotation mark simply produce n backslashes.
- */
-private string parseEscapeSequence(string content, ref size_t position, out bool needSplit)
-{
-    import std.range : repeat;
-
-    size_t num = 0;
-    needSplit = false;
-    while (position < content.length)
-    {
-        if (content[position] == '"')
+        foreach (s2; testStrings[0 .. 10])
         {
-            // If " is followed by a splitting char, the " is not kept except if num is odd...
-            if ((num % 2 == 0) && (position + 1 >= content.length
-                    || content[position + 1].isSplitChar()))
-            {
-                needSplit = true;
-                return '\\'.repeat(num / 2).array().idup;
-            }
-            else
-            {
-                return '\\'.repeat(num / 2).array().idup ~ "\"";
-            }
-        }
-        else if (content[position] != '\\')
-        {
-            position--;
-            return '\\'.repeat(num).array().idup;
-        }
+            auto q2 = escapeWindowsArgument(s2);
+            auto u = unescapeLine(q ~ " " ~ q2);
 
-        num++;
-        position++;
+            assert(u[0] == s);
+            assert(u[1] == s2);
+        }
     }
-
-    position--;
-    return '\\'.repeat(num).array().idup;
-}
-
-unittest
-{
-    size_t idx = 0;
-    bool needSplit;
-    assert(r"\".parseEscapeSequence(idx, needSplit) == r"\" && idx == 0);
-    idx = 0;
-    assert(r"\ ".parseEscapeSequence(idx, needSplit) == r"\" && idx == 0);
-    idx = 0;
-    assert(r"\\ ".parseEscapeSequence(idx, needSplit) == r"\\" && idx == 1);
-    idx = 0;
-    assert(r"\\\ ".parseEscapeSequence(idx, needSplit) == r"\\\" && idx == 2);
-    idx = 0;
-    assert(r"\\\".parseEscapeSequence(idx, needSplit) == r"\\\" && idx == 2);
-
-    idx = 0;
-    assert(`\"`.parseEscapeSequence(idx, needSplit) == `"` && idx == 1);
-    idx = 0;
-    assert(`\" `.parseEscapeSequence(idx, needSplit) == `"` && idx == 1);
-    idx = 0;
-    assert(`\\" `.parseEscapeSequence(idx, needSplit) == `\` && idx == 2);
-    idx = 0;
-    assert(`\\\" `.parseEscapeSequence(idx, needSplit) == `\"` && idx == 3);
-    idx = 0;
-    assert(`\\\" `.parseEscapeSequence(idx, needSplit) == `\"` && idx == 3);
-    idx = 0;
-    assert(`\\\\" `.parseEscapeSequence(idx, needSplit) == `\\` && idx == 4);
 }
 
 /**
