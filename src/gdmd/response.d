@@ -70,7 +70,7 @@ string[] parseResponse(string name)
     if (content is null)
         content = readText(name);
 
-    foreach (line; content.lineSplitter())
+    foreach (line; content.splitLines())
     {
         result ~= unescapeLine(line);
     }
