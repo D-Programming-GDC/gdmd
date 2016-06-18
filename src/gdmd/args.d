@@ -7,12 +7,20 @@ import std.array, std.algorithm, std.stdio, std.string, std.path, std.typecons;
 import gdmd.exception, gdmd.response;
 
 /**
+ * Print compiler version information
+ */
+void printVersionInfo(uint major, uint minor, string gdcInfo)
+{
+    writefln("GDMD D Compiler %s.%03d using", major, minor);
+    write(gdcInfo);
+}
+
+/**
  * Prints command-line usage.
  */
 void printUsage(uint major, uint minor, string gdcInfo)
 {
-    writefln("GDMD D Compiler %s.%03d using", major, minor);
-    write(gdcInfo);
+    printVersionInfo(major, minor, gdcInfo);
 
     write(q"EOF
 Documentation: http://dlang.org/
@@ -29,6 +37,7 @@ Usage:
   -q=arg1        pass arg1 to gdc
 
   -allinst       generate code for all template instantiations
+  -boundscheck=[on|safeonly|off]   bounds checks on, in @safe only, or off
   -c             do not link
   -color[=on|off]   force colored console output on or off
   -cov           do code coverage analysis
@@ -46,6 +55,7 @@ Usage:
   -defaultlib=name  set default library to name
   -deps          print module dependencies (imports/file/version/debug/lib)
   -deps=filename write module dependencies to filename (only imports)
+  -dip25         implement http://wiki.dlang.org/DIP25 (experimental)
   -fPIC          generate position independent code
   -g             add symbolic debug info
   -gc            add symbolic debug info, optimize for non D debuggers
@@ -54,7 +64,7 @@ Usage:
   -H             generate 'header' file
   -Hddirectory   write 'header' file to directory
   -Hffilename    write 'header' file to filename
-  --help         print help
+  --help         print help and exit
   -Ipath         where to look for imports
   -ignore        ignore unsupported pragmas
   -inline        do function inlining
@@ -66,7 +76,6 @@ Usage:
   -main          add default main() (e.g. for unittesting)
   -man           open web browser on manual page
   -map           generate linker .map file
-  -boundscheck=[on|safeonly|off]   bounds checks on, in @safe only, or off
   -noboundscheck no array bounds checking (deprecated, use -boundscheck=off)
   -O             optimize
   -o-            do not write object file
@@ -83,10 +92,12 @@ Usage:
   -unittest      compile in unit tests
   -v             verbose
   -vcolumns      print character (column) numbers in diagnostics
+  -verrors=num   limit the number of error messages (0 means unlimited)
+  -vgc           list all gc allocations including hidden ones
+  -vtls          list all variables going into thread local storage
+  --version      print compiler version and exit
   -version=level compile in version code >= level
   -version=ident compile in version code identified by ident
-  -vtls          list all variables going into thread local storage
-  -vgc           list all gc allocations including hidden ones
   -w             warnings as errors (compilation will halt)
   -wi            warnings as messages (compilation will continue)
   -X             generate JSON file
@@ -150,6 +161,9 @@ struct Arguments
 
     /// Print executed gdc commands
     bool debugCommands;
+
+    /// Print version information and exit
+    bool printVersion;
 }
 
 private struct ArgsParser
@@ -249,6 +263,9 @@ private struct ArgsParser
             // Note: Use the GNU mechanism
             _args.gdcFlags ~= ["-fprofile-arcs", "-ftest-coverage"];
             return false;
+        case "conf":
+            abort("configuration files not supported in GDMD");
+            return false;
         case "shared":
             goto case;
         case "dylib":
@@ -286,32 +303,57 @@ private struct ArgsParser
             _args.gdcFlags ~= "-m64";
             return false;
         case "profile":
-            _args.gdcFlags ~= "-pg";
-            return false;
+            switch (arg.getValue)
+            {
+            case "gc":
+                abort("-profile=gc is not implemented in GDC");
+                return false;
+            case noValue:
+                _args.gdcFlags ~= "-pg";
+                return false;
+            default:
+                abortInvalidArgument();
+                return false;
+            }
         case "v":
-            _args.gdcFlags ~= "-v";
+            _args.gdcFlags ~= "--verbose";
             return false;
         case "vtls":
-            _args.gdcFlags ~= "-fd-vtls";
+            _args.gdcFlags ~= "-ftransition=tls";
             return false;
         case "vcolumns":
             _args.columns = true;
             return false;
+        case "verrors":
+            if (arg.getValue == noValue)
+                abortNeedArgument();
+            _args.gdcFlags ~= "-fmax-error-messages=" ~ arg.getValue;
+            return false;
         case "vgc":
-            _args.gdcFlags ~= "-fd-vgc";
+            _args.gdcFlags ~= "-ftransition=nogc";
             return false;
         case "transition":
             switch (arg.getValue)
             {
             case "?":
-                exit("Valid options for -transition= switch: tls, 3449");
+                exit(
+                    "Language changes listed by -transition=id:\n" ~ "  =all           list information on all language changes\n" ~ "  =complex,14488 list all usages of complex or imaginary types\n" ~ "  =field,3449    list all non-mutable fields which occupy an object instance\n" ~ "  =tls           list all variables going into thread local storage");
+
                 return false;
             case "3449":
-                // FIXME
-                abort("-transtion=3449 not implemented in GDC");
+            case "field":
+                _args.gdcFlags ~= "-ftransition=field";
                 return false;
             case "tls":
-                _args.gdcFlags ~= "-fd-vtls";
+                _args.gdcFlags ~= "-ftransition=tls";
+                return false;
+            case "14488":
+            case "complex":
+                _args.gdcFlags ~= "-ftransition=complex";
+                return false;
+            case "all":
+                _args.gdcFlags ~= ["-ftransition=field", "-ftransition=tls",
+                    "-ftransition=complex"];
                 return false;
             case noValue:
                 abortNeedArgument();
@@ -351,7 +393,7 @@ private struct ArgsParser
             _args.gdcFlags ~= "-frelease";
             return false;
         case "betterC":
-            _args.gdcFlags ~= "-fno-emit-moduleinfo";
+            _args.gdcFlags ~= "-fno-moduleinfo";
             return false;
         case "noboundscheck":
             _args.gdcFlags ~= "-fno-bounds-check";
@@ -363,7 +405,7 @@ private struct ArgsParser
                 _args.gdcFlags ~= "-fbounds-check";
                 return false;
             case "safeonly":
-                _args.gdcFlags ~= "-fbounds-check=safe";
+                _args.gdcFlags ~= "-fbounds-check=safeonly";
                 return false;
             case "off":
                 _args.gdcFlags ~= "-fno-bounds-check";
@@ -418,6 +460,9 @@ private struct ArgsParser
         case "-y":
             // 'Hidden debug switches' according to DMD source, unused
             return false;
+        case "-version":
+            _args.printVersion = true;
+            return false;
         case "defaultlib":
             if (arg.getValue == noValue)
                 abortNeedArgument();
@@ -433,6 +478,9 @@ private struct ArgsParser
                 _args.gdcFlags ~= "-fdeps";
             else
                 _args.gdcFlags ~= "-fdeps=" ~ arg.getValue;
+            return false;
+        case "dip25":
+            _args.gdcFlags ~= "-ftransition=dip25";
             return false;
         case "main":
             _args.main = true;

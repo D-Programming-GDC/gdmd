@@ -15,6 +15,8 @@ static this()
     // So our tested gdmd uses the system local gdc
     if (!environment.get("GDC"))
         environment["GDC"] = "gdc";
+    if (!environment.get("AR"))
+        environment["AR"] = "ar";
 }
 
 auto removeElement(R, N)(R haystack, N needle)
@@ -111,6 +113,16 @@ public:
 void test1()
 {
     auto test = GDMDTest("1");
+
+    test.runSuccess("--version");
+    test.files([]);
+
+    test.runSuccess("src/a.d --version");
+    test.files([]);
+
+    test.runFail("src/a.d -conf=foo.conf");
+    test.files([]);
+
     test.runSuccess("src/a.d -c");
     test.files(["a.o"]);
 
@@ -186,8 +198,9 @@ void test2()
 void test3()
 {
     auto test = GDMDTest("3");
+    auto oldGDC = environment["GDC"];
     environment.remove("GDC");
-    test.runSuccess("-gdc=gdc src/a.d");
+    test.runSuccess("-gdc=" ~ oldGDC ~ " src/a.d");
     test.files(["a"]);
 
     // ar might not be in same folder as gdc
@@ -196,8 +209,7 @@ void test3()
 
     test.runSuccess("-gdc=gdc -ar=ar src/a.d -lib");
     test.files(["a.a"]);
-    environment["GDC"] = "gdc";
-    environment["AR"] = "ar";
+    environment["GDC"] = oldGDC;
 
     test.runSuccess("-vdmd src/a.d -lib");
     test.files(["a.a"]);
@@ -260,8 +272,8 @@ void test3()
     //test.runSuccess("src/a.d -debuglib=gphobos2");
     //test.files(["a"]);
 
-    test.runSuccess("src/a.d -defaultlib=gphobos2");
-    test.files(["a"]);
+    //test.runSuccess("src/a.d -defaultlib=gphobos2");
+    //test.files(["a"]);
 
     test.runSuccess("src/a.d -deps");
     test.files(["a"]);
@@ -347,6 +359,12 @@ void test3()
     test.runSuccess("src/a.d -profile");
     test.files(["a"]);
 
+    test.runFail("src/a.d -profile=");
+    test.files([]);
+
+    test.runFail("src/a.d -profile=gc");
+    test.files([]);
+
     test.runSuccess("src/a.d -property");
     test.files(["a"]);
 
@@ -365,8 +383,29 @@ void test3()
     test.runSuccess("src/a.d -transition=tls");
     test.files(["a"]);
 
-    test.runFail("src/a.d -transition=3449");
+    test.runSuccess("src/a.d -transition=3449");
+    test.files(["a"]);
+
+    test.runSuccess("src/a.d -transition=field");
+    test.files(["a"]);
+
+    test.runSuccess("src/a.d -transition=14488");
+    test.files(["a"]);
+
+    test.runSuccess("src/a.d -transition=complex");
+    test.files(["a"]);
+
+    test.runSuccess("src/a.d -transition=all");
+    test.files(["a"]);
+
+    test.runFail("src/a.d -transition=");
     test.files([]);
+
+    test.runFail("src/a.d -transition");
+    test.files([]);
+
+    test.runSuccess("src/a.d -dip25");
+    test.files(["a"]);
 
     test.runSuccess("src/a.d -unittest");
     test.files(["a"]);
@@ -375,6 +414,9 @@ void test3()
     test.files(["a"]);
 
     test.runSuccess("src/a.d -vcolumns");
+    test.files(["a"]);
+
+    test.runSuccess("src/a.d -verrors=10");
     test.files(["a"]);
 
     test.runSuccess("src/a.d -version=10");

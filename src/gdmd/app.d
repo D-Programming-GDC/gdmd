@@ -469,7 +469,14 @@ public:
     {
         auto result = parseCommandLine(cmd, args);
         args = result.args;
-        if (result.help)
+        if (result.args.printVersion)
+        {
+            findGDC();
+            auto ver = detectGDCVersion();
+            printVersionInfo(ver / 1000, ver % 1000, getGDCInfo("--version"));
+            exit();
+        }
+        else if (result.help)
         {
             // We need gdc to print the help output
             findGDC();
