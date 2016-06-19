@@ -21,6 +21,10 @@
         {
             "name": "gdc6",
             "versions": ["GCC_49_Plus"],
+        },
+        {
+            "name": "gdc7",
+            "versions": ["GCC_49_Plus"],
         }
     ],
     "subPackages": [
