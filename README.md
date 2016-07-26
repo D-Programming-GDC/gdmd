@@ -2,7 +2,7 @@ GDMD [![Build Status](https://travis-ci.org/jpf91/GDMD.svg?branch=master)](https
 =============
 GDMD is a wrapper for the [GDC](http://gdcproject.org/) [D](https://dlang.org) compiler to provide a [DMD](https://dlang.org/download.html#dmd) compatible interface. GDMD is written in D and has no external dependencies.
 
-Currently targeting DMD version: 2.066
+Currently targeting DMD version: 2.068
 
 ### Building
 GDMD can be build with the D package manager [dub](http://code.dlang.org/download).
@@ -14,6 +14,7 @@ dub build --build=release --config=gdc4.8
 dub build --build=release --config=gdc4.9
 dub build --build=release --config=gdc5
 dub build --build=release --config=gdc6
+dub build --build=release --config=gdc7
 ```
 
 ### Installing GDMD
@@ -64,7 +65,7 @@ gdmd src/main.d -ffunction-sections
 
 #### Supported command line arguments
 ```
-GDMD D Compiler 2.066 using
+GDMD D Compiler 2.068 using
 gdc (GCC) 5.3.0
 Copyright (C) 2015 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
@@ -84,6 +85,7 @@ Usage:
   -q=arg1        pass arg1 to gdc
 
   -allinst       generate code for all template instantiations
+  -boundscheck=[on|safeonly|off]   bounds checks on, in @safe only, or off
   -c             do not link
   -color[=on|off]   force colored console output on or off
   -cov           do code coverage analysis
@@ -101,6 +103,7 @@ Usage:
   -defaultlib=name  set default library to name
   -deps          print module dependencies (imports/file/version/debug/lib)
   -deps=filename write module dependencies to filename (only imports)
+  -dip25         implement http://wiki.dlang.org/DIP25 (experimental)
   -fPIC          generate position independent code
   -g             add symbolic debug info
   -gc            add symbolic debug info, optimize for non D debuggers
@@ -109,7 +112,7 @@ Usage:
   -H             generate 'header' file
   -Hddirectory   write 'header' file to directory
   -Hffilename    write 'header' file to filename
-  --help         print help
+  --help         print help and exit
   -Ipath         where to look for imports
   -ignore        ignore unsupported pragmas
   -inline        do function inlining
@@ -121,7 +124,6 @@ Usage:
   -main          add default main() (e.g. for unittesting)
   -man           open web browser on manual page
   -map           generate linker .map file
-  -boundscheck=[on|safeonly|off]   bounds checks on, in @safe only, or off
   -noboundscheck no array bounds checking (deprecated, use -boundscheck=off)
   -O             optimize
   -o-            do not write object file
@@ -138,10 +140,12 @@ Usage:
   -unittest      compile in unit tests
   -v             verbose
   -vcolumns      print character (column) numbers in diagnostics
+  -verrors=num   limit the number of error messages (0 means unlimited)
+  -vgc           list all gc allocations including hidden ones
+  -vtls          list all variables going into thread local storage
+  --version      print compiler version and exit
   -version=level compile in version code >= level
   -version=ident compile in version code identified by ident
-  -vtls          list all variables going into thread local storage
-  -vgc           list all gc allocations including hidden ones
   -w             warnings as errors (compilation will halt)
   -wi            warnings as messages (compilation will continue)
   -X             generate JSON file
