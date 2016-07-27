@@ -93,6 +93,28 @@ private:
                 {
                 }
             }
+
+            // For native compilers, also search for 'ar' in path
+            version (UseSystemAR)
+            {
+                if (!arPath.exists())
+                {
+                    idx = gdcPath.lastIndexOf("gdc", std.string.CaseSensitive.no);
+                    try
+                        arPath = searchAR((gdcPath[0 .. idx].baseName() ~ "ar").setExeExtension());
+                    catch (AbortException)
+                    {
+                    }
+                }
+                if (!arPath.exists())
+                {
+                    try
+                        arPath = searchAR("ar".setExeExtension());
+                    catch (AbortException)
+                    {
+                    }
+                }
+            }
         }
     }
 

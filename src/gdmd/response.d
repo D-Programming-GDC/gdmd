@@ -124,7 +124,6 @@ string[] unescapeLine(string line)
                 buffer = "";
             }
             inQuoteString = !inQuoteString;
-
         }
         else if (c == '\\' && isEscapedQuote(line[i .. $]))
         {
