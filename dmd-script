@@ -53,7 +53,7 @@ my $verbose = 0;
 my $show_commands = 0;
 my $seen_all_sources_flag = 0;
 my $first_input_file;
-my $combine; # Compile multiple sources into a single object file
+my $combine = 0; # Compile multiple sources into a single object file
 my $lib = 0;
 my $tmpdir;
 my %tmpdir_objs;
@@ -498,12 +498,9 @@ while ( $arg_i < scalar(@ARGV) ) {
     }
 }
 
-# Slightly different from dmd... allows -of to specify
-# the name of the executable.
-
-$combine = scalar(@sources) > 1;
-#  (! $link && ! $lib && scalar(@sources) > 1 && $output_file ) ||
-#  ($link && scalar(@sources) > 1); # > 0 ? does DMD now do the same for 1 vs many sources?
+if ($link || (! $lib && $output_file && scalar(@sources) > 1)) {
+    $combine = 1;
+}
 
 if ( $run && ! $link ) {
     errorExit "flags conflict with -run";
