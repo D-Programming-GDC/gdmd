@@ -51,6 +51,7 @@ my $map_file;
 my $run = 0;
 my $verbose = 0;
 my $show_commands = 0;
+my $print_version = 0;
 my $seen_all_sources_flag = 0;
 my $first_input_file;
 my $combine = 0; # Compile multiple sources into a single object file
@@ -156,6 +157,7 @@ Usage:
   -unittest      compile in unit tests
   -v             verbose
   -vdmd          print commands run by this script
+  --version      print compiler version and exit
   -version=level compile in version code >= level
   -version=ident compile in version code identified by ident
   -vtls          list all variables going into thread local storage
@@ -423,6 +425,8 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @out, '-fd-vtls';
     } elsif ( $arg =~ m/^-v1$/ ) {
         push @out, '-fd-version=1';
+    } elsif ( $arg =~ m/^--version$/ ) {
+        $print_version = 1;
     } elsif ( $arg =~ m/^-version=(.*)$/ ) {
         push @out, "-fversion=$1";
     } elsif ( $arg =~ m/^-version.*$/ ) {
@@ -515,7 +519,12 @@ if ( ($link || $lib) && ! $output_file && $first_input_file ) {
     }
 }
 
-if (! scalar(@sources) && ! ($link && scalar(@objects))) {
+if ( $print_version ) {
+    my @cmd = ($gdc, '--version', @out);
+    my $result = system(@cmd);
+    errorExit if $result & 0xff; # Give up if can't exec or gdc exited with a signal
+    exit 0;
+} elsif (! scalar(@sources) && ! ($link && scalar(@objects))) {
     my @cmd = ($gdc, '--version', @out);
     my $result = system(@cmd);
     errorExit if $result & 0xff; # Give up if can't exec or gdc exited with a signal
