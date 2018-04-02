@@ -524,7 +524,7 @@ if ( $print_version ) {
     my $result = system(@cmd);
     errorExit if $result & 0xff; # Give up if can't exec or gdc exited with a signal
     exit 0;
-} elsif (! scalar(@sources) && ! ($link && scalar(@objects))) {
+} elsif (! scalar(@sources) && ! (($link || $lib) && scalar(@objects))) {
     my @cmd = ($gdc, '--version', @out);
     my $result = system(@cmd);
     errorExit if $result & 0xff; # Give up if can't exec or gdc exited with a signal
