@@ -236,9 +236,15 @@ sub readINI {
 }
 
 my $gcc_version = `$gdc -dumpversion`;
+my $gcc_maj;
+my $gcc_min;
+
 chomp $gcc_version;
-$gcc_version =~ m/^(\d+)\.(\d+)/;
-my ($gcc_maj, $gcc_min) = ( $1, $2 );
+if ($gcc_version =~ m/^\d+$/) {
+    ($gcc_maj, $gcc_min) = ($gcc_version, 0);
+} else {
+    ($gcc_maj, $gcc_min) = ($gcc_version =~ m/^(\d+)\.(\d+)/);
+}
 
 #my $target_machine = `$gdc -dumpmachine`;
 #chomp $target_machine;
