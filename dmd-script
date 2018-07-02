@@ -314,6 +314,8 @@ while ( $arg_i < scalar(@ARGV) ) {
 
     if ($arg eq '-arch' ) {
         push @out, '-arch', $ARGV[$arg_i++];
+    } elsif ( $arg =~ m/^-betterC$/ ) {
+        # ignored
     } elsif ($arg =~ m/^-c$/ ) {
         $link = 0;
     } elsif ( $arg eq '-cov' ) {
