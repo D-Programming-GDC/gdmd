@@ -420,9 +420,17 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @out, '-funittest';
     } elsif ( $arg =~ m/^-v$/ ) {
         $verbose = 1;
-        push @out, '-fd-verbose';
+        if ($gcc_maj >= 8) {
+            push @out, '--verbose';
+        } else {
+            push @out, '-fd-verbose';
+        }
     } elsif ( $arg =~ m/^-vtls$/ ) {
-        push @out, '-fd-vtls';
+        if ($gcc_maj >= 8) {
+            push @out, '-ftransition=tls';
+        } else {
+            push @out, '-fd-vtls';
+        }
     } elsif ( $arg =~ m/^-v1$/ ) {
         push @out, '-fd-version=1';
     } elsif ( $arg =~ m/^--version$/ ) {
@@ -625,7 +633,11 @@ foreach my $srcf_i (@sources) {
         if (! $json_file) {
             $json_file = substr($first_input_file, 0, length($first_input_file)-2) . ".json";
         }
-        push @out, '-fXf=' . $json_file;
+        if ($gcc_maj >= 8) {
+            push @out, '-Xf' . $json_file;
+        } else {
+            push @out, '-fXf=' . $json_file;
+        }
     }
 
     if ($map) {
