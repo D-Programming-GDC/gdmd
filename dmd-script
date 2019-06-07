@@ -532,6 +532,10 @@ if ( $run && ! $link ) {
     errorExit "flags conflict with -run";
 }
 
+if ( $stdin && ! $output_file && $output_directory ) {
+    $output_file = "$output_directory/a.out"
+}
+
 if ( $output_file ) {
     my $dir = dirname( $output_file );
     eval { mkpath( $dir ) };
