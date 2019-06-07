@@ -532,6 +532,14 @@ if ( $run && ! $link ) {
     errorExit "flags conflict with -run";
 }
 
+if ( $output_file ) {
+    my $dir = dirname( $output_file );
+    eval { mkpath( $dir ) };
+    if ($@) {
+        errorExit "could not create $dir: $@";
+    }
+}
+
 if ( ($link || $lib) && ! $output_file && $first_input_file ) {
     $output_file = fileparse( $first_input_file, qr/\..*$/ );
     if ( $link && targetHasEXE() ) {
