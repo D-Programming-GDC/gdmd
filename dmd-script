@@ -58,6 +58,7 @@ my $combine = 0; # Compile multiple sources into a single object file
 my $lib = 0;
 my $tmpdir;
 my %tmpdir_objs;
+my $stdin = 0;
 
 my @sources;
 my @objects;
@@ -486,6 +487,11 @@ while ( $arg_i < scalar(@ARGV) ) {
         addSourceFile $arg;
     } elsif ( $arg =~ m/^.+\.ddoc/i ) {
         push @out, "-fdoc-inc=$arg";
+    } elsif ( $arg eq '-' ) {
+        push @out, "-x";
+        push @out, 'd';
+        push @out, '-';
+        $stdin = 1;
     } elsif ( $arg !~ m/\./ ) {
         addSourceFile $arg . ".d";
     } elsif ( $arg =~ m/^(.+)(\.exe)$/i ) {
@@ -540,7 +546,7 @@ if ( $print_version ) {
     my $result = system(@cmd);
     errorExit if $result & 0xff; # Give up if can't exec or gdc exited with a signal
     exit 0;
-} elsif (! scalar(@sources) && ! (($link || $lib) && scalar(@objects))) {
+} elsif (! scalar(@sources) && ! $stdin && ! (($link || $lib) && scalar(@objects))) {
     my @cmd = ($gdc, '--version', @out);
     my $result = system(@cmd);
     errorExit if $result & 0xff; # Give up if can't exec or gdc exited with a signal
@@ -700,7 +706,7 @@ foreach my $srcf_i (@sources) {
     last if $combine;
 }
 
-if ($ok && $link) {
+if ($ok && ($link || $stdin)) {
     my @cmd = ($gdc, @out, @dobjects, @objects, @link_out);
     if ( $output_file ) {
         push @cmd, '-o', $output_file;
