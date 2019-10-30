@@ -155,6 +155,7 @@ Usage:
   -q,arg1,...    pass arg1, arg2, etc. to to gdc
   -release       compile release version
   -run srcfile args...   run resulting program, passing args
+  -shared        generate shared library (DLL)
   -unittest      compile in unit tests
   -v             verbose
   -vdmd          print commands run by this script
@@ -423,6 +424,8 @@ while ( $arg_i < scalar(@ARGV) ) {
 
         push @run_args, @ARGV[$arg_i..$#ARGV];
         last;
+    } elsif ( $arg =~ m/^-shared$/ ) {
+        push @out, '-shared';
     } elsif ( $arg =~ m/^-noboundscheck$/ ) {
         push @out, '-fno-bounds-check';
     } elsif ( $arg =~ m/^-unittest$/ ) {
