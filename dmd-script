@@ -126,7 +126,6 @@ Usage:
   -fall-sources  for every source file, semantically process each file preceding it
   -framework ... pass a -framework ... option to gdc
   -g             add symbolic debug info
-  -gc            add symbolic debug info, pretend to be C
   -gs            always emit stack frame
   -gx            add stack stomp code
   -H             generate 'header' file
@@ -352,7 +351,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @link_out, '-defaultlib', $1;
     } elsif ( $arg =~ m/^-deps=(.*)$/ ) {
         push @out, (defined($1) ? "-fdeps=$1" : '-fdeps');
-    } elsif ( $arg =~ m/^-g$|^-gc$/ ) {
+    } elsif ( $arg =~ m/^-g$/ ) {
         $debug = 1;
         push @out, '-g';
     } elsif ( $arg =~ m/^-gs$/ ) {
