@@ -131,7 +131,7 @@ Usage:
   -H             generate 'header' file
   -Hdhdrdir      write 'header' file to hdrdir directory
   -Hffilename    write 'header' file to filename
-  --help         print help
+  --help|-h      print help
   -Ipath         where to look for imports
   -ignore        ignore unsupported pragmas
   -inline        do function inlining
@@ -368,7 +368,7 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-Hf(.*)$/ ) {
         $header = 1;
         $header_file = $1;
-    } elsif ( $arg eq '--help' ) {
+    } elsif ( $arg eq '--help' || $arg eq '-h' ) {
         printUsage;
         exit 0;
     } elsif ($arg eq '-framework' ) {
