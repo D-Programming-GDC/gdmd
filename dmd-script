@@ -126,13 +126,12 @@ Usage:
   -fall-sources  for every source file, semantically process each file preceding it
   -framework ... pass a -framework ... option to gdc
   -g             add symbolic debug info
-  -gc            add symbolic debug info, pretend to be C
   -gs            always emit stack frame
   -gx            add stack stomp code
   -H             generate 'header' file
   -Hdhdrdir      write 'header' file to hdrdir directory
   -Hffilename    write 'header' file to filename
-  --help         print help
+  --help|-h      print help
   -Ipath         where to look for imports
   -ignore        ignore unsupported pragmas
   -inline        do function inlining
@@ -150,7 +149,6 @@ Usage:
   -op            do not strip paths from source file
   -pipe          use pipes rather than intermediate files
   -profile       profile runtime performance of generated code
-  -property      enforce property syntax
   -quiet         suppress unnecessary messages
   -q,arg1,...    pass arg1, arg2, etc. to to gdc
   -release       compile release version
@@ -352,7 +350,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @link_out, '-defaultlib', $1;
     } elsif ( $arg =~ m/^-deps=(.*)$/ ) {
         push @out, (defined($1) ? "-fdeps=$1" : '-fdeps');
-    } elsif ( $arg =~ m/^-g$|^-gc$/ ) {
+    } elsif ( $arg =~ m/^-g$/ ) {
         $debug = 1;
         push @out, '-g';
     } elsif ( $arg =~ m/^-gs$/ ) {
@@ -370,15 +368,13 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-Hf(.*)$/ ) {
         $header = 1;
         $header_file = $1;
-    } elsif ( $arg eq '--help' ) {
+    } elsif ( $arg eq '--help' || $arg eq '-h' ) {
         printUsage;
         exit 0;
     } elsif ($arg eq '-framework' ) {
         push @link_out, '-framework', $ARGV[$arg_i++];
     } elsif ( $arg eq '-ignore' ) {
         push @out, '-fignore-unknown-pragmas';
-    } elsif ( $arg eq '-property' ) {
-        push @out, '-fproperty';
     } elsif ( $arg =~ m/^-inline$/ ) {
         push @out, '-finline-functions';
     } elsif ( $arg =~ m/^-I(.*)$/ ) {
