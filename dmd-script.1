@@ -49,8 +49,6 @@ for every source file, semantically process each file preceding i
 pass a -framework ... option to gdc
 .IP -g
 add symbolic debug info
-.IP -gc
-add symbolic debug info, pretend to be C
 .IP -gs
 always emit stack frame
 .IP -H
@@ -97,8 +95,6 @@ do not strip paths from source file
 use pipes instead of intermediate files
 .IP -profile
 profile runtime performance
-.IP -property
-enforce property syntax
 .IP -quiet
 suppress unnecessary error messages
 .IP -q,<arg1>[,<arg2>,<arg3>,...]
@@ -115,6 +111,8 @@ verbose
 Print commands executed by this wrapper script
 .IP --version
 print compiler version and exit
+.IP -h|--help
+Print the usage information and exit
 .IP -version=level
 compile in version code >= level
 .IP  version=ident
@@ -141,4 +139,3 @@ Copyright
 Maintained by:
 
 (C) 2011 Iain Buclaw
-
