@@ -139,6 +139,7 @@ Usage:
   -Llinkerflag   pass linkerflag to link
   -lib           generate library rather than object files
   -m...          pass an -m... option to gdc
+  -main          add default main() (e.g. for unittesting)
   -man           open web browser on manual page
   -map           generate linker .map file
   -noboundscheck turns off array bounds checking for all functions
@@ -467,6 +468,8 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-f.+/ ) {
         # Pass -fxxx options
         push @out, $arg;
+    } elsif ($arg eq '-main') {
+        push @out, '-fmain';
     } elsif ($arg eq '-man') {
         browse("http://www.gdcproject.org/wiki/UserDocumentation");
         exit 0;
