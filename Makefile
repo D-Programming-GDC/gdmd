@@ -19,6 +19,7 @@
 
 
 DESTDIR = 
+suffix =
 target_prefix = 
 prefix = /usr/local
 bindir = $(prefix)/bin
@@ -30,22 +31,23 @@ man = dmd-script.1
 all:
 
 
-install: $(DESTDIR)$(bindir)/$(target_prefix)gdmd $(DESTDIR)$(man1dir)/$(target_prefix)gdmd.1
+install: $(DESTDIR)$(bindir)/$(target_prefix)gdmd$(suffix) \
+         $(DESTDIR)$(man1dir)/$(target_prefix)gdmd$(suffix).1
 
 
-$(DESTDIR)$(bindir)/$(target_prefix)gdmd: $(src)
+$(DESTDIR)$(bindir)/$(target_prefix)gdmd$(suffix): $(src)
 	-rm -f $@
 	-install $< $@
 
 
-$(DESTDIR)$(man1dir)/$(target_prefix)gdmd.1: $(man)
+$(DESTDIR)$(man1dir)/$(target_prefix)gdmd$(suffix).1: $(man)
 	-rm -f $@
 	-install -m 644 $< $@
 
 
 uninstall:
-	-rm -f $(DESTDIR)$(bindir)/$(target_prefix)gdmd
-	-rm -f $(DESTDIR)$(man1dir)/$(target_prefix)gdmd.1
+	-rm -f $(DESTDIR)$(bindir)/$(target_prefix)gdmd$(suffix)
+	-rm -f $(DESTDIR)$(man1dir)/$(target_prefix)gdmd$(suffix).1
 
 
 
