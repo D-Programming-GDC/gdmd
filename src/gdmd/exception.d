@@ -40,7 +40,7 @@ class ExitException : Exception
  */
 void enforceAbort(bool condition, string message)
 {
-    enforceEx!AbortException(condition, message);
+    enforce!AbortException(condition, message);
 }
 
 /**
