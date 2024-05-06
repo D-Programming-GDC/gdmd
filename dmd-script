@@ -106,7 +106,7 @@ Usage:
   gdmd files.d ... { -switch }
 
   files.d        D source files
-  \@cmdfile      read arguments from cmdfile
+  \@cmdfile       read arguments from cmdfile
   -arch ...      pass an -arch ... option to gdc
   -c             do not link
   -cov           do code coverage analysis
@@ -483,6 +483,25 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @out, $arg;
     } elsif ( $arg =~ m/^-.+$/ ) {
         errorExit "unrecognized switch '$arg'";
+    } elsif ( $arg =~ m/^\@(.+)$/i ) {
+        # Append response file to end of ARGV.
+	open(my $rsp_fh, "<", $1) or die("Can't read response file: $!");
+	my $rsp = do { local $/; <$rsp_fh> };
+        close($rsp_fh);
+
+        while (length $rsp) {
+            if ($rsp =~ m/^"(([^\\"]|\\.)*(\\\\)*)"\s*/ ) {
+                $arg = $1;
+                $rsp = $';
+                $arg =~ s/\\"/"/g;
+                $arg =~ s/(\\+)\1$/$1/g;
+            } else {
+                $rsp =~ m/^(\S*)\s*/;
+                $arg = $1;
+                $rsp = $';
+            }
+            push @ARGV, $arg;
+        }
     } elsif ( $arg =~ m/^.+\.d$/i ||
               $arg =~ m/^.+\.dd$/i ||
               $arg =~ m/^.+\.di$/i) {
@@ -501,25 +520,6 @@ while ( $arg_i < scalar(@ARGV) ) {
         $output_file = $1;
         if ( targetHasEXE() ) {
             $output_file .= $2;
-        }
-    } elsif ( $arg =~ m/^\@(.+\.rsp)$/i ) {
-        # Append response file to end of ARGV.
-        open(RSP, $1) or die("Can't read response file: $!");
-        my $rsp = <RSP>;
-        close(RSP);
-
-        while (length $rsp) {
-            if ($rsp =~ m/^"(([^\\"]|\\.)*(\\\\)*)"\s*/ ) {
-                $arg = $1;
-                $rsp = $';
-                $arg =~ s/\\"/"/g;
-                $arg =~ s/(\\)+\1$/$1/g;
-            } else {
-                $rsp =~ m/^(\S*)\s*/;
-                $arg = $1;
-                $rsp = $';
-            }
-            push @ARGV, $arg;
         }
     } else {
         push @objects, $arg
