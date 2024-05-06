@@ -158,6 +158,9 @@ Usage:
   -unittest      compile in unit tests
   -v             verbose
   -vdmd          print commands run by this script
+  -verrors=<num> limit the number of error messages (0 means unlimited)
+  -verrors=context   (enabled by default) show diagnostic messages with context
+  -verrors=spec  show errors from speculative compiles such as __traits(compiles,...)
   --version      print compiler version and exit
   -version=level compile in version code >= level
   -version=ident compile in version code identified by ident
@@ -442,6 +445,18 @@ while ( $arg_i < scalar(@ARGV) ) {
         }
     } elsif ( $arg =~ m/^-v1$/ ) {
         push @out, '-fd-version=1';
+    } elsif ( $arg =~ m/^-verrors$/ ) {
+	errorExit "switch -verrors expects a value";
+    } elsif ( $arg =~ m/^-verrors=(\d*)$/ ) {
+	push @out, "-fmax-errors=" . ( $1 || 0 );
+    } elsif ( $arg =~ m/^-verrors=(.+)$/ ) {
+	if ( $1 eq "context" ) {
+	    # ignored
+	} elsif ( $1 eq "spec" ) {
+	    push @out, '-Wspeculative';
+	} else {
+	    errorExit "unrecongnized value passed to -verrors '$1'";
+	}
     } elsif ( $arg =~ m/^--version$/ ) {
         $print_version = 1;
     } elsif ( $arg =~ m/^-version=(.*)$/ ) {
