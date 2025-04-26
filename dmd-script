@@ -133,6 +133,7 @@ Usage:
   -Hffilename    write 'header' file to filename
   --help|-h      print help
   -Ipath         where to look for imports
+  -i             include imported modules in the compilation
   -ignore        ignore unsupported pragmas
   -inline        do function inlining
   -Jpath         where to look for string imports
@@ -378,6 +379,8 @@ while ( $arg_i < scalar(@ARGV) ) {
         exit 0;
     } elsif ($arg eq '-framework' ) {
         push @link_out, '-framework', $ARGV[$arg_i++];
+    } elsif ( $arg eq '-i' ) {
+        push @out, '-finclude-imports';
     } elsif ( $arg eq '-ignore' ) {
         push @out, '-fignore-unknown-pragmas';
     } elsif ( $arg =~ m/^-inline$/ ) {
