@@ -157,9 +157,11 @@ Usage:
   -op            do not strip paths from source file
   -pipe          use pipes rather than intermediate files
   -profile       profile runtime performance of generated code
+  -preview=name  enable an upcoming language change identified by name
   -quiet         suppress unnecessary messages
   -q,arg1,...    pass arg1, arg2, etc. to to gdc
   -release       compile release version
+  -revert=name   revert language change identified by name
   -run srcfile args...   run resulting program, passing args
   -shared        generate shared library (DLL)
   -unittest      compile in unit tests
@@ -444,11 +446,19 @@ while ( $arg_i < scalar(@ARGV) ) {
         $output_parents = 1;
     } elsif ( $arg =~ m/^-pipe$/ ) {
         push @out, '-pipe';
+    } elsif ( $arg =~ m/^-preview=(.*)$/ ) {
+	# gdc identifiers are all lowercase, with dmd some have mixedcase
+	my $gdc_id = lc($1);
+	push @out, "-fpreview=$gdc_id";
     } elsif ( $arg =~ m/^-profile$/ ) {
         # there is more to profiling than this ... -finstrument-functions?
         push @out, '-pg';
     } elsif ( $arg =~ m/^-release$/ ) {
         push @out, '-frelease';
+    } elsif ( $arg =~ m/^-revert=(.*)$/ ) {
+	# gdc identifiers are all lowercase, with dmd some have mixedcase
+	my $gdc_id = lc($1);
+	push @out, "-frevert=$gdc_id";
     } elsif ( $arg eq '-run' ) {
         $run = 1;
 
