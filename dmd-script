@@ -144,6 +144,7 @@ Usage:
   -main          add default main() (e.g. for unittesting)
   -man           open web browser on manual page
   -map           generate linker .map file
+  -mixin=filename    expand and save mixins to file specified by filename
   -noboundscheck turns off array bounds checking for all functions
   -O             optimize
   -o-            do not write object file
@@ -499,6 +500,8 @@ while ( $arg_i < scalar(@ARGV) ) {
         if ($ARGV[$arg_i] =~ m/.map$/ ) {
             $map_file = $ARGV[$arg_i++];
         }
+    } elsif ( $arg =~ m/^-mixin=(.*)$/ ) {
+	push @out, "-fsave-mixins=$1";
     } elsif ( $arg =~ m/^-m.+/ ) {
         # Pass -mxxx options
         push @out, $arg;
