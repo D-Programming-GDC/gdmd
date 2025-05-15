@@ -482,6 +482,8 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @out, "-Werror";
     } elsif ( $arg =~ m/^-wi$/ ) {
         push @out, "-Wall";
+    } elsif ( $arg =~ m/^-wo$/ ) {
+	# ignored
     } elsif ( $arg =~ m/^-quiet$/ ) {
         # ignored
     } elsif ( $arg =~ m/^-q,(.*)$/ ) {
