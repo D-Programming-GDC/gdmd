@@ -123,6 +123,7 @@ Usage:
   -debuglib=lib  debug library to use instead of phobos
   -defaultlib=lib    default library to use instead of phobos
   -deps=filename write module dependencies to filename
+  -extern-std=standard    Set C++ name mangling compatibility with standard
   -f...          pass an -f... option to gdc
   -fall-sources  for every source file, semantically process each file preceding it
   -framework ... pass a -framework ... option to gdc
@@ -363,6 +364,8 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @link_out, '-defaultlib', $1;
     } elsif ( $arg =~ m/^-deps=(.*)$/ ) {
         push @out, (defined($1) ? "-fdeps=$1" : '-fdeps');
+    } elsif ( $arg =~ m/^-extern-std=(.*)$/ ) {
+	push @out, "-fextern-std=$1";
     } elsif ( $arg =~ m/^-g$/ ) {
         $debug = 1;
         push @out, '-g';
