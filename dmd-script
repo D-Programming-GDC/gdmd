@@ -170,7 +170,7 @@ Usage:
   -verrors=context   (enabled by default) show diagnostic messages with context
   -verrors=spec  show errors from speculative compiles such as __traits(compiles,...)
   --version      print compiler version and exit
-  -version=level compile in version code >= level
+  -version=level compile in version code <= level
   -version=ident compile in version code identified by ident
   -vtemplates    list statistics on template instantiations
   -vtls          list all variables going into thread local storage
