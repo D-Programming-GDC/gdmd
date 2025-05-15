@@ -165,6 +165,7 @@ Usage:
   -revert=name   revert language change identified by name
   -run srcfile args...   run resulting program, passing args
   -shared        generate shared library (DLL)
+  -transition=name    Help with langauge change identified by name
   -unittest      compile in unit tests
   -v             verbose
   -vdmd          print commands run by this script
@@ -474,6 +475,10 @@ while ( $arg_i < scalar(@ARGV) ) {
         last;
     } elsif ( $arg =~ m/^-shared$/ ) {
         push @out, '-shared';
+    } elsif ( $arg =~ m/^-transition=(.*)$/ ) {
+	# gdc identifiers are all lowercase, with dmd some have mixedcase
+	my $gdc_id = lc($1);
+	push @out, "-ftransition=$gdc_id";
     } elsif ( $arg =~ m/^-noboundscheck$/ ) {
         push @out, '-fno-bounds-check';
     } elsif ( $arg =~ m/^-unittest$/ ) {
