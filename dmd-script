@@ -165,6 +165,7 @@ Usage:
   --version      print compiler version and exit
   -version=level compile in version code >= level
   -version=ident compile in version code identified by ident
+  -vtemplates    list statistics on template instantiations
   -vtls          list all variables going into thread local storage
   -w             enable warnings
   -wi            enable informational warnings
@@ -446,6 +447,11 @@ while ( $arg_i < scalar(@ARGV) ) {
         } else {
             push @out, '-fd-vtls';
         }
+    } elsif ( $arg =~ m/^-vtemplates(?:=(.*))?$/ ) {
+	if ( $1 && $1 ne 'list-instances' ) {
+	    errorExit "-vtemplates only supports list-instances, not '$1'"
+	}
+	push @out, '-ftransition=templates';
     } elsif ( $arg =~ m/^-v1$/ ) {
         push @out, '-fd-version=1';
     } elsif ( $arg =~ m/^-verrors$/ ) {
