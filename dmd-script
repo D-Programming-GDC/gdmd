@@ -110,6 +110,7 @@ Usage:
   -allinst       generate code for all template instantiations
   -arch ...      pass an -arch ... option to gdc
   -boundscheck=value    bounds checks on, in \@safe only, or off
+  -betterC       omit generating some runtime information and helper functions
   -c             do not link
   -cov           do code coverage analysis
   -D             generate documentation
@@ -334,7 +335,9 @@ while ( $arg_i < scalar(@ARGV) ) {
 	push @out, '-fall-instantiations'
     } elsif ( $arg eq '-arch' ) {
         push @out, '-arch', $ARGV[$arg_i++];
-    } elsif ( $arg =~ m/^(-betterC|-vcolumns)$/ ) {
+    } elsif ( $arg =~ m/^-betterC$/ ) {
+	push @out, '-fno-druntime'
+    } elsif ( $arg =~ m/^-vcolumns$/ ) {
         # ignored
     } elsif ( $arg =~ m/^-boundscheck=(.*)$/ ) {
 	push @out, "-fbounds-check=$1"
