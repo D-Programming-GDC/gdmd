@@ -132,6 +132,8 @@ Usage:
   -H             generate 'header' file
   -Hdhdrdir      write 'header' file to hdrdir directory
   -Hffilename    write 'header' file to filename
+  -HC=value      verbosity of C++ header generation
+  -HCf=filename  write C++ 'header' to filename
   --help|-h      print help
   -Ipath         where to look for imports
   -i             include imported modules in the compilation
@@ -379,6 +381,25 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-Hf(.*)$/ ) {
         $header = 1;
         $header_file = $1;
+    } elsif ( $arg =~ m/^-HC(?:=(.*))?$/ ) {
+	if ( ! $1 ) {
+	    print "GDC doesn't support outputing a C++ header to stdout\n";
+	    print "Please use the -HCf=filename form\n";
+	    errorExit "plain -HC is unsupported";
+	}
+	if ( $1 =~ m/^\?|h|help$/ ) {
+	    print "Possible value of -HC are silent and verbose\n";
+	    exit 0;
+	}
+	if ( $1 eq 'verbose' ) {
+	    push @out, '-fdump-c++-spec-verbose';
+	} elsif ( $1 eq 'silent' ) {
+	    # ignore
+	} else {
+	    errorExit "Unknown argument passed to -HC '$1'";
+	}
+    } elsif ( $arg =~ m/^-HCf=(.*)$/ ) {
+	push @out, "-fdump-c++-spec=$1";
     } elsif ( $arg eq '--help' || $arg eq '-h' ) {
         printUsage;
         exit 0;
