@@ -57,6 +57,18 @@ generate 'header' file
 write 'header' file to hdrdir directory
 .IP -Hffilename
 write 'header' file to filename
+.IP -HC=value
+Control the verbosity of C++ header generation. Possible values are:
+.RS
+.IP \(bu 2
+silent
+.IP \(bu
+verbose
+
+Add comments for ignored declarations in the generated C++ header.
+.RE
+.IP -HCf=filename
+write C++ 'header' file to filename
 .IP -Ipath
 where to look for imports
 
