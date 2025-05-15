@@ -108,6 +108,7 @@ Usage:
   files.d        D source files
   \@cmdfile       read arguments from cmdfile
   -arch ...      pass an -arch ... option to gdc
+  -boundscheck=value    bounds checks on, in \@safe only, or off
   -c             do not link
   -cov           do code coverage analysis
   -D             generate documentation
@@ -327,6 +328,8 @@ while ( $arg_i < scalar(@ARGV) ) {
         push @out, '-arch', $ARGV[$arg_i++];
     } elsif ( $arg =~ m/^(-betterC|-vcolumns)$/ ) {
         # ignored
+    } elsif ( $arg =~ m/^-boundscheck=(.*)$/ ) {
+	push @out, "-fbounds-check=$1"
     } elsif ($arg =~ m/^-c$/ ) {
         $link = 0;
     } elsif ( $arg eq '-cov' ) {
