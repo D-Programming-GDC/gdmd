@@ -561,11 +561,11 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-.+$/ ) {
         errorExit "unrecognized switch '$arg'";
     } elsif ( $arg =~ m/^\@(.+)$/i ) {
-        # Append response file to end of ARGV.
 	open(my $rsp_fh, "<", $1) or die("Can't read response file: $!");
 	my $rsp = do { local $/; <$rsp_fh> };
         close($rsp_fh);
 
+	my @new_args;
         while (length $rsp) {
             if ($rsp =~ m/^"(([^\\"]|\\.)*(\\\\)*)"\s*/ ) {
                 $arg = $1;
@@ -577,8 +577,10 @@ while ( $arg_i < scalar(@ARGV) ) {
                 $arg = $1;
                 $rsp = $';
             }
-            push @ARGV, $arg;
+            push @new_args, $arg;
         }
+	# Place the response arguments after the @path argument
+	splice @ARGV, $arg_i, 0, @new_args;
     } elsif ( $arg =~ m/^.+\.d$/i ||
               $arg =~ m/^.+\.dd$/i ||
               $arg =~ m/^.+\.di$/i) {
