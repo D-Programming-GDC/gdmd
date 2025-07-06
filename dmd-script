@@ -169,6 +169,7 @@ Usage:
   -unittest      compile in unit tests
   -v             verbose
   -vdmd          print commands run by this script
+  -verror-style=[gnu|sarif]   the style for file/line annotations on compiler messages
   -verrors=<num> limit the number of error messages (0 means unlimited)
   -verrors=context   (enabled by default) show diagnostic messages with context
   -verrors=spec  show errors from speculative compiles such as __traits(compiles,...)
@@ -523,6 +524,16 @@ while ( $arg_i < scalar(@ARGV) ) {
         errorExit "unrecognized switch '$arg'";
     } elsif ( $arg =~ m/^-vdmd$/ ) {
         $show_commands = 1;
+    } elsif ( $arg =~ m/^-verror-style=(.*)$/ ) {
+	if ( $1 eq "gnu" ) {
+	    # ignored
+	} elsif ( $1 eq "sarif" ) {
+	    push @out, "-fdiagnostics-format=sarif-stderr"
+	} elsif ( $1 eq "digitalmars" ) {
+	    errorExit "diagnostic messages can not printed using the Digital Mars style"
+	} else {
+	    errorExit "unrecognized value passed to -verror-style '$1'"
+	}
     } elsif ( $arg =~ m/^-w$/ ) {
         push @out, "-Werror";
     } elsif ( $arg =~ m/^-wi$/ ) {
