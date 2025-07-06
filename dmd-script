@@ -327,10 +327,9 @@ sub browse($) {
 # Load dmd.conf before before parsing arguments.
 readINI();
 
-if ($ENV{DFLAGS}) {
-    push @ARGV, split /\s+/, $ENV{DFLAGS};
-}
-
+# $DFLAGS should go before a -run switch, or at the end of ARGV
+my @extra_dflags = split(/\s+/, $ENV{DFLAGS} || "");
+my $extra_dflags_used = 0;
 my $arg_i = 0;
 while ( $arg_i < scalar(@ARGV) ) {
     my $arg = $ARGV[$arg_i++];
@@ -465,6 +464,16 @@ while ( $arg_i < scalar(@ARGV) ) {
 	my $gdc_id = lc($1);
 	push @out, "-frevert=$gdc_id";
     } elsif ( $arg eq '-run' ) {
+	if ( $extra_dflags_used == 0 ) {
+	    $extra_dflags_used = 1;
+
+	    # Place the flags before this switch
+	    splice @ARGV, $arg_i - 1, 0, @extra_dflags;
+	    # And start parsing from there next iteration
+	    $arg_i -= 1;
+	    next;
+	}
+
         $run = 1;
 
         $arg = $ARGV[$arg_i++];
@@ -473,7 +482,7 @@ while ( $arg_i < scalar(@ARGV) ) {
         addSourceFile $arg;
 
         push @run_args, @ARGV[$arg_i..$#ARGV];
-        last;
+	last;
     } elsif ( $arg =~ m/^-shared$/ ) {
         push @out, '-shared';
     } elsif ( $arg =~ m/^-transition=(.*)$/ ) {
@@ -613,6 +622,14 @@ while ( $arg_i < scalar(@ARGV) ) {
         }
     } else {
         push @objects, $arg
+    }
+
+    # On the last iteration we append the $DFLAGS, this way
+    # the flags don't risk being appended to a possible
+    # `-run` arguments
+    if ( $extra_dflags_used == 0 && $arg_i >= scalar(@ARGV) ) {
+	$extra_dflags_used = 1;
+	push @ARGV, @extra_dflags;
     }
 }
 
