@@ -112,6 +112,8 @@ Usage:
   -boundscheck=value    bounds checks on, in \@safe only, or off
   -betterC       omit generating some runtime information and helper functions
   -c             do not link
+  -color         turn colored console output on
+  -color=[on|off|auto]    control colored console output
   -cov           do code coverage analysis
   -D             generate documentation
   -Dddocdir      write documentation file to docdir directory
@@ -346,6 +348,20 @@ while ( $arg_i < scalar(@ARGV) ) {
 	push @out, "-fbounds-check=$1"
     } elsif ($arg =~ m/^-c$/ ) {
         $link = 0;
+    } elsif ( $arg =~ m/^-color(=.*)?$/ ) {
+	my $value = "";
+	if ( ! $1 ) {
+	    # ignore
+	} elsif ( $1 eq "=on" ) {
+	    $value = "=always";
+	} elsif ( $1 eq "=off" ) {
+	    $value = "=never";
+	} elsif ( $1 eq "=auto" ) {
+	    $value = "=auto";
+	} else {
+	    errorExit "Unknown argument passed to -color '$1'";
+	}
+	push @out, "-fdiagnostics-color$value"
     } elsif ( $arg eq '-cov' ) {
         push @out, '-fprofile-arcs', '-ftest-coverage';
     } elsif ( $arg =~ m/^-D$/ ) {
