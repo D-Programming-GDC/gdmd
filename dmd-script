@@ -59,6 +59,7 @@ my $lib = 0;
 my $tmpdir;
 my %tmpdir_objs;
 my $stdin = 0;
+my $gcc;
 
 my @sources;
 my @objects;
@@ -185,6 +186,8 @@ Usage:
   -wi            enable informational warnings
   -X             generate JSON file
   -Xffilename    write JSON file to filename
+  -Xcc=<driverflag> pass driverflag to linker driver (gdc).
+  -gcc=<gcc|g++|...> Compiler to use for linking. Defaults to gdc.
 EOF
 ;
 }
@@ -575,6 +578,10 @@ while ( $arg_i < scalar(@ARGV) ) {
     } elsif ( $arg =~ m/^-Xf(.*)$/ ) {
         $json = 1;
         $json_file = $1;
+    } elsif ( $arg =~ m/^-Xcc=(.*)$/ ) {
+        push @link_out, split(qr/ /, $1);
+    } elsif ( $arg =~ m/^-gcc=(.*)$/ ) {
+        $gcc = $1;
     } elsif ( $arg eq '-fall-sources' ) {
         $seen_all_sources_flag = 1;
     } elsif ( $arg =~ m/^-f.+/ ) {
@@ -847,7 +854,20 @@ foreach my $srcf_i (@sources) {
 }
 
 if ($ok && ($link || $stdin)) {
-    my @cmd = ($gdc, @out, @dobjects, @objects, @link_out);
+    my @cmd;
+    if ( $gcc and $gcc !~ m/gdc/) {
+        my @gdc_stderr_lines = split("\n",
+            qx(echo "void main(){}" | $gdc @out @link_out -### -xd - 2>&1 1>/dev/null));
+        my @gdc_link_out = $verbose ? ("--verbose") : ();
+        push @gdc_link_out, 
+            grep(/^-L|^-l|^-B/, split(" ", $gdc_stderr_lines[-2]));
+        foreach ( grep(/^-B/, @gdc_link_out ) ) {
+            $_ = "-Wl,$_";
+        }
+        @cmd = ($gcc, @dobjects, @objects, @gdc_link_out, @link_out);
+    } else {
+        @cmd = ($gdc, @out, @dobjects, @objects, @link_out);
+    }
     if ( $output_file ) {
         push @cmd, '-o', $output_file;
     }
